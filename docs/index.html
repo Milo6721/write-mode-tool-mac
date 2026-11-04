@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Write Mode Tool dla Maca</title>
+<meta name="description" content="Zaznacz tekst w dowolnej aplikacji na Macu, kliknij prawym i zrób z nim, co chcesz: przetłumacz, odpowiedz, wyślij w Wiadomościach, dodaj do kalendarza.">
+<link rel="icon" href="icon.png">
+<style>
+:root { --bg:#f5f5f7; --card:#ffffff; --text:#1d1d1f; --muted:#6e6e73; --line:rgba(0,0,0,.08); --blue:#0071e3; --blue2:#0a84ff; --glass:rgba(255,255,255,.62); }
+@media (prefers-color-scheme: dark) { :root { --bg:#000; --card:#1c1c1e; --text:#f5f5f7; --muted:#a1a1a6; --line:rgba(255,255,255,.12); --glass:rgba(40,40,44,.6); } }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin:0; background:var(--bg); color:var(--text); font:17px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+nav { position: sticky; top: 0; z-index: 5; backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); background: var(--glass); border-bottom: 1px solid var(--line); }
+nav .wrap { display:flex; align-items:center; justify-content:space-between; height:48px; font-size:14px; }
+nav b { display:flex; align-items:center; gap:8px; font-weight:600; }
+nav img { width:22px; height:22px; border-radius:6px; }
+nav a.btn-s { color:#fff; background:var(--blue); padding:5px 14px; border-radius:980px; text-decoration:none; }
+.hero { text-align:center; padding: 72px 20px 40px; }
+.hero img { width:128px; height:128px; border-radius:30px; box-shadow:0 20px 50px rgba(0,0,0,.25); }
+h1 { font-size: clamp(36px, 7vw, 64px); line-height:1.05; letter-spacing:-.02em; margin:28px 0 14px; font-weight:700; }
+.lead { font-size: clamp(19px, 3vw, 24px); color:var(--muted); max-width:680px; margin:0 auto 32px; line-height:1.35; }
+.dl { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
+.dl a { display:block; text-decoration:none; color:#fff; background:var(--blue); padding:14px 26px; border-radius:16px; min-width:250px; transition:transform .15s, background .15s; }
+.dl a:hover { background:var(--blue2); transform:translateY(-2px); }
+.dl a.alt { background:var(--card); color:var(--text); border:1px solid var(--line); }
+.dl a.alt:hover { border-color:var(--blue); }
+.dl strong { display:block; font-size:18px; }
+.dl span { font-size:13px; opacity:.8; }
+.hint { color:var(--muted); font-size:14px; margin-top:16px; }
+section { padding: 56px 0; }
+h2 { font-size: clamp(28px, 5vw, 40px); letter-spacing:-.015em; margin:0 0 10px; line-height:1.1; }
+.sub { color:var(--muted); margin:0 0 32px; max-width:640px; }
+.grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:16px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:22px; padding:22px; }
+.card h3 { margin:0 0 6px; font-size:19px; }
+.card p { margin:0; color:var(--muted); font-size:15px; }
+.ico { font-size:26px; margin-bottom:10px; }
+.menu { background:var(--glass); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border:1px solid var(--line); border-radius:18px; padding:8px; width:100%; max-width:360px; margin: 0 auto; box-shadow:0 24px 60px rgba(0,0,0,.18); font-size:15px; }
+.menu div { padding:8px 14px; border-radius:10px; display:flex; justify-content:space-between; }
+.menu div.on { background:var(--blue); color:#fff; }
+.menu small { color:var(--muted); }
+.split { display:grid; grid-template-columns: 1fr 1fr; gap:36px; align-items:center; }
+@media (max-width:760px) { .split { grid-template-columns:1fr; } }
+ol { padding-left: 22px; } ol li { margin: 10px 0; }
+code { background:var(--card); border:1px solid var(--line); padding:2px 7px; border-radius:7px; font-size:14px; word-break:break-word; }
+.note { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:18px 22px; color:var(--muted); font-size:15px; }
+footer { padding:40px 20px 60px; color:var(--muted); font-size:13px; text-align:center; border-top:1px solid var(--line); }
+</style>
+</head>
+<body>
+<nav><div class="wrap"><b><img src="icon.png" alt="">Write Mode Tool</b><a class="btn-s" href="#pobierz">Pobierz</a></div></nav>
+
+<header class="hero" id="pobierz">
+  <img src="icon.png" alt="Ikona Write Mode Tool">
+  <h1>Zaznacz tekst.<br>Kliknij prawym.</h1>
+  <p class="lead">Write Mode Tool dodaje do każdej aplikacji na Macu akcje AI: tłumaczenie, odpowiedź na wiadomość, wysyłkę w Wiadomościach czy dodanie terminu do kalendarza.</p>
+  <div class="dl">
+    <a href="https://github.com/Milo6721/write-mode-tool-mac/releases/latest/download/Write-Mode-Tool-arm64.dmg"><strong>Pobierz na Maca z Apple Silicon</strong><span>M1, M2, M3, M4 i nowsze · plik .dmg · ok. 133 MB</span></a>
+    <a class="alt" href="https://github.com/Milo6721/write-mode-tool-mac/releases/latest/download/Write-Mode-Tool-x64.dmg"><strong>Pobierz na Maca z Intelem</strong><span>starsze Maci · plik .dmg · ok. 137 MB</span></a>
+  </div>
+  <p class="hint">Nie wiesz, który masz? Menu Apple → „Ten Mac". Widzisz „Apple M…", to pierwszy przycisk. Widzisz „Intel", to drugi.</p>
+</header>
+
+<section class="wrap">
+  <div class="split">
+    <div>
+      <h2>Zawsze pod ręką</h2>
+      <p class="sub">Zaznaczasz tekst w przeglądarce, Mailu, Notatkach czy gdziekolwiek indziej. Prawy przycisk → Usługi, albo skrót <code>⌘⌥M</code>. Pojawia się małe okno ze szklistym wyglądem, w którym wybierasz, co zrobić z tekstem.</p>
+      <p class="sub" style="margin:0">Wynik możesz wkleić w miejsce zaznaczenia, skopiować albo od razu wysłać do kogoś.</p>
+    </div>
+    <div class="menu" aria-hidden="true">
+      <div>Kopiuj <small>⌘C</small></div>
+      <div>Wyszukaj w Google <small></small></div>
+      <div class="on">Usługi ▸ Write Mode Tool</div>
+      <div>Usługi ▸ Przetłumacz</div>
+      <div>Usługi ▸ Wyślij w Wiadomościach</div>
+      <div>Usługi ▸ Wyślij e-mailem</div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>Co potrafi</h2>
+  <p class="sub">Wszystkie akcje działają na zaznaczonym tekście. Nic nie dzieje się samo, wszystko sprawdzasz przed użyciem.</p>
+  <div class="grid">
+    <div class="card"><div class="ico">💬</div><h3>Wyślij w Wiadomościach</h3><p>Wybierasz osobę ze swoich Kontaktów, a tekst otwiera się w aplikacji Wiadomości. Tak samo działa e-mail w aplikacji Mail.</p></div>
+    <div class="card"><div class="ico">↩️</div><h3>Odpowiedz</h3><p>Zaznacz wiadomość od kogoś, wybierz ton (krótko, uprzejmie, stanowczo, zgoda, odmowa) i dostaniesz gotową odpowiedź.</p></div>
+    <div class="card"><div class="ico">📅</div><h3>Do kalendarza</h3><p>Wyciąga terminy i zadania z tekstu, rozumie „jutro" i „w piątek". Terminy trafiają do Kalendarza, zadania do Przypomnień.</p></div>
+    <div class="card"><div class="ico">🌍</div><h3>Przetłumacz</h3><p>17 języków, ostatnio użyty zawsze na górze. Tłumaczy znaczenie, a nie słowo w słowo.</p></div>
+    <div class="card"><div class="ico">❓</div><h3>Zapytaj o tekst</h3><p>Pole na górze okna: pytasz o zaznaczony tekst albo prosisz o napisanie czegoś od zera.</p></div>
+    <div class="card"><div class="ico">🔎</div><h3>Szukaj w internecie</h3><p>Zaznaczone hasło otwiera się od razu w wyszukiwarce.</p></div>
+    <div class="card"><div class="ico">🗂️</div><h3>Praca i nauka</h3><p>Wersja na Slack lub Teams, pismo urzędowe, angielski biznesowy, komunikat commita, fiszki, quiz, trudne słowa i inne.</p></div>
+    <div class="card"><div class="ico">⭐️</div><h3>Własne akcje</h3><p>Sam piszesz polecenie dla AI, nadajesz nazwę i akcja ląduje w menu, np. „Zgłoszenie do Jiry".</p></div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>Instalacja</h2>
+  <p class="sub">Trwa dwie minuty. Aplikacja nie jest podpisana przez Apple, więc przy pierwszym uruchomieniu macOS zapyta o zgodę.</p>
+  <ol>
+    <li>Pobierz plik <code>.dmg</code> i otwórz go. Przeciągnij <b>Write Mode Tool</b> do folderu Programy.</li>
+    <li>Kliknij aplikację <b>prawym przyciskiem → Otwórz</b> i potwierdź. Jeśli to nie pomoże, wpisz w Terminalu: <code>xattr -cr "/Applications/Write Mode Tool.app"</code></li>
+    <li>Zezwól na <b>Dostępność</b> (wklejanie wyniku), <b>Automatyzację</b> i <b>Kontakty</b>, kiedy system zapyta.</li>
+    <li>Wklej swój <b>klucz API Anthropic</b> (zdobędziesz go na console.anthropic.com) w oknie, które pojawi się przy pierwszym użyciu.</li>
+    <li>Jeśli nie widzisz usług w menu prawego przycisku: Ustawienia systemowe → Klawiatura → Skróty klawiszowe → Usługi → Tekst i zaznacz Write Mode Tool.</li>
+  </ol>
+</section>
+
+<section class="wrap">
+  <h2>Prywatność i koszty</h2>
+  <div class="note">Zaznaczony tekst jest wysyłany przez internet do Anthropic, tylko gdy użyjesz akcji AI, i tylko z Twoim kluczem API. Klucz jest zaszyfrowany na Twoim komputerze. Za zapytania płacisz Ty, na swoim koncie Anthropic. Nie używaj aplikacji do tekstów poufnych. Wiadomości i e-maile otwierają się jako szkic do sprawdzenia, chyba że sam włączysz w menu opcję wysyłania od razu.</div>
+</section>
+
+<footer>Projekt prywatny, niezależny. Wygląd inspirowany macOS. Nie jest produktem Apple Inc. ani Anthropic PBC i nie jest z nimi powiązany. „Apple", „Mac", „iMessage" i „macOS" są znakami towarowymi Apple Inc.</footer>
+</body>
+</html>

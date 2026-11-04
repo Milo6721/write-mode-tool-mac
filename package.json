@@ -22,6 +22,6 @@
         "NSContactsUsageDescription": "Write Mode Tool pokazuje Twoje kontakty, żebyś mógł wysłać tekst do wybranej osoby."
       }
     },
-    "dmg": { "title": "Write Mode Tool" }
+    "dmg": { "title": "Write Mode Tool", "artifactName": "Write-Mode-Tool-${arch}.dmg" }
   }
 }
