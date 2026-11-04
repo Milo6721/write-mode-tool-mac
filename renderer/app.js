@@ -52,12 +52,17 @@ const I = {
   mail: 'M3 6h18v12H3zM3 7l9 7 9-7',
   chat: 'M4 5h16v11H9l-5 4z',
   trash: 'M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13',
+  reply: 'M9 7L4 12l5 5M4 12h10a6 6 0 0 1 6 6',
+  calendar: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4',
+  web: 'M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15zM16 16l5 5',
   plus: 'M12 5v14M5 12h14',
 };
-const LABEL = { translate: 'Przetłumacz', send: 'Wyślij do…', slack: 'Wersja na Slack lub Teams', refuse: 'Uprzejma odmowa', official: 'Pismo urzędowe', bizen: 'Angielski biznesowy', headings: 'Nagłówki i akapity', tasks: 'Notatki na zadania', commit: 'Komunikat commita', flashcards: 'Fiszki', quiz: 'Quiz z tekstu', hardwords: 'Trudne słowa' };
+const LABEL = { translate: 'Przetłumacz', send: 'Wyślij do…', slack: 'Wersja na Slack lub Teams', refuse: 'Uprzejma odmowa', official: 'Pismo urzędowe', bizen: 'Angielski biznesowy', headings: 'Nagłówki i akapity', tasks: 'Notatki na zadania', commit: 'Komunikat commita', flashcards: 'Fiszki', quiz: 'Quiz z tekstu', hardwords: 'Trudne słowa', reply: 'Odpowiedz…', calendar: 'Do kalendarza', web: 'Szukaj w internecie' };
 /* Układ w stylu Apple Writing Tools: duże kafelki, potem listy z grupami */
 const LAYOUT = [
   ['tile', 'g2', null, ['translate', 'send']],
+  ['tile', 'g2', null, ['reply', 'calendar']],
+  ['list', '', 'Szybkie', ['web']],
   ['list', '', 'Komunikacja', ['slack', 'refuse', 'official', 'bizen']],
   ['list', '', 'Tekst i kod', ['headings', 'tasks', 'commit']],
   ['list', '', 'Nauka', ['flashcards', 'quiz', 'hardwords']],
@@ -86,6 +91,8 @@ const initials = (n) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[
 function onMenuAction(a) {
   if (a === 'translate') return openLang();
   if (a === 'send') return openSend(st.text, 'menu');
+  if (a === 'reply') return openTone();
+  if (a === 'web') { window.api.search(st.text); return; }
   start(a, '');
 }
 function renderRows() {
@@ -112,8 +119,15 @@ function renderRows() {
 }
 function chipButton(icon, label, fn) { const b = h('button', 'chip wide'); b.innerHTML = svg(icon) + '<span>' + label + '</span>'; b.onclick = fn; return b; }
 
+const TONES = ['Krótko i na temat', 'Uprzejmie i formalnie', 'Przyjaźnie i luźno', 'Stanowczo', 'Zgoda, potwierdzenie', 'Odmowa', 'Poproś o więcej szczegółów'];
+function openTone() {
+  const box = $('langs'); box.textContent = ''; document.querySelector('#v-lang .stitle').textContent = 'Odpowiedz…';
+  for (const t of TONES) { const b = h('button', 'row'); b.append(h('span', 'grow', t)); b.onclick = () => start('reply', t); box.append(b); }
+  show('lang');
+}
 /* ---------- wybór języka ---------- */
 function openLang() {
+  document.querySelector('#v-lang .stitle').textContent = 'Przetłumacz na…';
   const box = $('langs'); box.textContent = '';
   const ordered = [...LANGS].sort((a, b) => (b[1] === st.data.lastLang) - (a[1] === st.data.lastLang));
   for (const [pl, en] of ordered) {
@@ -191,8 +205,9 @@ function start(action, instruction) {
   st.last = { action, instruction }; st.buf = '';
   show('result'); $('out').className = ''; $('out').textContent = '';
   $('status').textContent = 'Myślę…'; $('status').classList.add('shimmer');
-  for (const id of ['retry', 'copy', 'sendRes', 'replace']) $(id).disabled = true;
-  $('replace').hidden = action === 'ask' && st.hasSel; $('replace').textContent = st.hasSel ? 'Zamień' : 'Wstaw'; $('copy').textContent = 'Kopiuj';
+  for (const id of ['retry', 'copy', 'sendRes', 'replace', 'cal']) $(id).disabled = true;
+  $('cal').hidden = action !== 'calendar'; $('cal').textContent = 'Do kalendarza';
+  $('replace').hidden = (action === 'ask' && st.hasSel) || action === 'reply' || action === 'calendar'; $('replace').textContent = st.hasSel ? 'Zamień' : 'Wstaw'; $('copy').textContent = 'Kopiuj';
   setBusy(true);
   if (demo) { demoStream(); return; }
   window.api.run(action, instruction);
@@ -201,7 +216,7 @@ function submitAsk() { const v = $('ask').value.trim(); if (v) start('ask', v); 
 function onChunk(t) { st.buf += t; $('out').className = ''; $('out').textContent = clean(st.buf); $('out').scrollTop = 1e9; $('status').textContent = 'Piszę…'; }
 function finish(ok, msg) {
   setBusy(false); $('status').classList.remove('shimmer');
-  $('retry').disabled = false; $('copy').disabled = !ok; $('sendRes').disabled = !ok; $('replace').disabled = !ok;
+  $('retry').disabled = false; $('copy').disabled = !ok; $('sendRes').disabled = !ok; $('replace').disabled = !ok; $('cal').disabled = !ok;
   if (!ok) { $('status').textContent = 'Coś poszło nie tak'; $('out').className = 'err'; $('out').textContent = msg; return; }
   $('status').textContent = 'Gotowe';
 }
@@ -250,6 +265,7 @@ $('retry').onclick = () => st.last && start(st.last.action, st.last.instruction)
 $('copy').onclick = () => { window.api.copy(clean(st.buf)); $('copy').textContent = 'Skopiowano ✓'; };
 $('sendRes').onclick = () => openSend(clean(st.buf), 'result');
 $('replace').onclick = () => window.api.replace(clean(st.buf));
+$('cal').onclick = async () => { const r = await window.api.addCalendar(clean(st.buf)); $('cal').textContent = r.ok ? 'Dodano: ' + r.n + ' ✓' : (r.msg || 'Nie udało się'); };
 $('getKey').onclick = () => window.api.openConsole();
 async function saveKey() {
   const v = $('keyInput').value.trim(); if (!v) return;

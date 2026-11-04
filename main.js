@@ -19,7 +19,7 @@ const PRESETS = [
   { label: 'F10', acc: 'F10' },
 ];
 const MODEL = () => process.env.WT_MODEL || cfg().model || 'claude-haiku-5-5';
-const QUALITY = new Set(['official', 'bizen', 'quiz', 'flashcards', 'tasks']); // akcje, w których opłaca się mocniejszy model
+const QUALITY = new Set(['official', 'bizen', 'quiz', 'flashcards', 'tasks', 'calendar']); // akcje, w których opłaca się mocniejszy model
 const modelFor = (action) => (QUALITY.has(action) && !process.env.WT_MODEL ? 'claude-sonnet-5-5' : MODEL());
 function log(...a) { try { fs.appendFileSync(path.join(app.getPath('userData'), 'log.txt'), new Date().toISOString() + ' ' + a.join(' ') + '\n'); } catch (e) { /* log opcjonalny */ } }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -204,6 +204,8 @@ function buildPrompt(action, instruction, text) {
     return 'Answer the question about the text below. Use the text as the main source; if the answer is not in the text, say so briefly and then answer from general knowledge. Be concise and direct. Reply in the language of the question.\n\nQuestion: ' + instruction + '\n\n<text>\n' + text + '\n</text>';
   }
   if (!text) return 'Write the text the user asks for: ' + instruction;
+  if (action === 'calendar') { const now = new Date(), days = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota']; return wrap('Find every task, appointment, meeting and deadline in the text. Today is ' + now.toISOString().slice(0, 10) + ' (' + days[now.getDay()] + '); resolve relative dates such as "jutro" or "w piątek" to a real date. Output one item per line in exactly this format: "RRRR-MM-DD GG:MM | tytuł" when the date and time are known, "RRRR-MM-DD | tytuł" when only the date is known, and "brak | tytuł" for a task without a date. Write titles short and in the language of the text. Output only these lines.'); }
+  if (action === 'reply') return wrap('The text is a message the user received. Write the user\'s reply to it in this tone: ' + (instruction || 'neutral') + '. Reply in the language of the message. Write only the body of the reply, ready to send, no subject line and no placeholders unless information is truly missing.');
   if (action === 'translate') return wrap('Translate the text into ' + (instruction || 'English') + '. Translate the meaning into natural, everyday language and prefer a native word over a borrowed word that merely looks the same. Preserve tone, formatting and line breaks. Output only the translation.');
   if (action.startsWith('c:')) {
     const a = (cfg().actions || []).find((x) => x.id === action.slice(2));
@@ -371,6 +373,48 @@ function watchIncoming() {
   readIncoming();
   try { fs.watch(app.getPath('userData'), (ev, name) => { if (name === 'incoming.txt') { clearTimeout(incomingTimer); incomingTimer = setTimeout(readIncoming, 60); } }); } catch (e) { log('watch failed', e.message); }
 }
+
+/* ---------- Szukaj w internecie i Do kalendarza ---------- */
+ipcMain.on('search', (e, t) => {
+  const q = String(t || '').replace(/\s+/g, ' ').trim().slice(0, 200); if (!q) return;
+  state.prev = null; hidePopup(); shell.openExternal('https://www.google.com/search?q=' + encodeURIComponent(q));
+});
+function parseItems(text) {
+  const out = [];
+  for (const line of String(text).split(/\r?\n/)) {
+    const m = line.trim().match(/^(\d{4}-\d{2}-\d{2}|brak|none)(?:\s+(\d{1,2}:\d{2}))?\s*\|\s*(.+)$/i);
+    if (m) out.push({ date: /^\d/.test(m[1]) ? m[1] : '', time: m[2] || '', title: m[3].trim().slice(0, 200) });
+  }
+  return out.slice(0, 40);
+}
+const icsText = (t) => String(t).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,');
+function buildIcs(items) {
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Write Mode Tool//PL', 'CALSCALE:GREGORIAN'];
+  items.forEach((it, i) => {
+    const d = it.date.replace(/-/g, ''), uid = Date.now() + '-' + i + '@writemodetool';
+    if (!d) { L.push('BEGIN:VTODO', 'UID:' + uid, 'DTSTAMP:' + stamp, 'SUMMARY:' + icsText(it.title), 'END:VTODO'); return; }
+    L.push('BEGIN:VEVENT', 'UID:' + uid, 'DTSTAMP:' + stamp, 'SUMMARY:' + icsText(it.title));
+    if (it.time) {
+      const [h, mi] = it.time.split(':'), hh = h.padStart(2, '0') + mi + '00', end = String((+h + 1) % 24).padStart(2, '0') + mi + '00';
+      L.push('DTSTART:' + d + 'T' + hh, 'DTEND:' + d + 'T' + end);
+    } else L.push('DTSTART;VALUE=DATE:' + d);
+    L.push('END:VEVENT');
+  });
+  L.push('END:VCALENDAR'); return L.join('\r\n') + '\r\n';
+}
+ipcMain.handle('addCalendar', async (e, text) => {
+  const items = parseItems(text); if (!items.length) return { ok: false, msg: 'Nie znalazłem zadań ani terminów.' };
+  const dated = items.filter((x) => x.date), undated = items.filter((x) => !x.date);
+  for (const it of undated) await osa('tell application "Reminders" to make new reminder with properties {name:"' + aq(it.title) + '"}');
+  if (dated.length) {
+    const file = path.join(os.tmpdir(), 'WriteModeTool-' + Date.now() + '.ics');
+    fs.writeFileSync(file, buildIcs(dated), 'utf8');
+    const err = await shell.openPath(file);
+    if (err) return { ok: false, msg: 'Nie udało się otworzyć Kalendarza.' };
+  }
+  state.prev = null; log('calendar items=' + items.length); return { ok: true, n: items.length };
+});
 
 /* ---------- skrót i zasobnik ---------- */
 function registerHotkey() {

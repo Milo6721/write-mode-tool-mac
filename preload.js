@@ -17,5 +17,7 @@ contextBridge.exposeInMainWorld('api', {
   saveContacts: (list) => ipcRenderer.invoke('saveContacts', list),
   saveActions: (list) => ipcRenderer.invoke('saveActions', list),
   setLang: (l) => ipcRenderer.send('setLang', l),
+  search: (t) => ipcRenderer.send('search', t),
+  addCalendar: (t) => ipcRenderer.invoke('addCalendar', t),
   sendTo: (contactId, channel, text) => ipcRenderer.invoke('sendTo', { contactId, channel, text }),
 });
