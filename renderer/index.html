@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'">
+<title>Write Mode Tool</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="dark">
+<!-- Soczewka Liquid Glass: refrakcja z lekką dyspersją chromatyczną (R, G, B przesunięte o różne wartości) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="glassLens" x="0" y="0" width="448" height="636" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+    <feImage id="lensMap" x="0" y="0" width="448" height="636" preserveAspectRatio="none" result="map"/>
+    <feDisplacementMap in="SourceGraphic" in2="map" scale="46" xChannelSelector="R" yChannelSelector="G" result="dR"/>
+    <feColorMatrix in="dR" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="cR"/>
+    <feDisplacementMap in="SourceGraphic" in2="map" scale="54" xChannelSelector="R" yChannelSelector="G" result="dG"/>
+    <feColorMatrix in="dG" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="cG"/>
+    <feDisplacementMap in="SourceGraphic" in2="map" scale="62" xChannelSelector="R" yChannelSelector="G" result="dB"/>
+    <feColorMatrix in="dB" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="cB"/>
+    <feBlend in="cR" in2="cG" mode="screen" result="rg"/>
+    <feBlend in="rg" in2="cB" mode="screen"/>
+  </filter>
+</svg>
+
+<div id="panel">
+  <div id="lens"></div>
+  <div id="tint"></div>
+  <div id="spec"></div>
+  <div id="rim"></div>
+  <div id="glow"></div>
+  <div id="content">
+    <header>
+      <div class="orb" id="orb"><img src="../assets/icon.png" alt=""></div>
+      <div class="title">Write Mode Tool</div>
+      <button class="icon-btn" id="close" aria-label="Zamknij">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </header>
+
+    <section id="v-menu">
+      <div id="snip"></div>
+      <div class="ask" id="askWrap">
+        <input id="ask" type="text" placeholder="Zapytaj o zaznaczony tekst" spellcheck="false" autocomplete="off">
+        <button id="askGo" class="go" aria-label="Zapytaj"><svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+      </div>
+      <div id="rows"></div>
+    </section>
+
+    <section id="v-lang" hidden>
+      <div class="bar"><button class="icon-btn" id="langBack" aria-label="Wstecz"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><div class="stitle">Przetłumacz na…</div></div>
+      <div class="scrollbox"><div class="list" id="langs"></div></div>
+    </section>
+
+    <section id="v-send" hidden>
+      <div class="bar"><button class="icon-btn" id="sendBack" aria-label="Wstecz"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><div class="stitle">Wyślij do…</div></div>
+      <div class="note" id="sendWhat"></div>
+      <div class="form" style="padding-bottom:0"><input id="cSearch" type="text" placeholder="Szukaj w Kontaktach" spellcheck="false" autocomplete="off"></div>
+      <div class="scrollbox"><div id="contacts"></div></div>
+      <div class="note err" id="sendMsg"></div>
+      <div class="actions"><button class="btn primary" id="addContact">Dodaj kontakt</button></div>
+      <p class="note"><span id="sendNote">Kontakty pochodzą z aplikacji Kontakty. Wiadomość otworzy się w aplikacji Wiadomości, e-mail w Mail.</span></p>
+    </section>
+
+    <section id="v-contact" hidden>
+      <div class="bar"><button class="icon-btn" id="contactBack" aria-label="Wstecz"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><div class="stitle">Nowy kontakt</div></div>
+      <div class="form">
+        <label>Imię i nazwisko<input id="cName" type="text" placeholder="np. Anna Kowalska" spellcheck="false" autocomplete="off"></label>
+        <label>Adres e-mail<input id="cMail" type="text" placeholder="anna@example.com" spellcheck="false" autocomplete="off"></label>
+        <label>Numer telefonu (do wiadomości)<input id="cPhone" type="text" placeholder="+48 600 000 000" spellcheck="false" autocomplete="off"></label>
+        <div class="note err" id="cMsg"></div>
+      </div>
+      <div class="actions"><button class="btn" id="cCancel">Anuluj</button><button class="btn primary" id="cSave">Zapisz</button></div>
+    </section>
+
+    <section id="v-actions" hidden>
+      <div class="bar"><button class="icon-btn" id="actBack" aria-label="Wstecz"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><div class="stitle">Własne akcje</div></div>
+      <div class="scrollbox">
+        <div class="list" id="myActs"></div>
+        <div class="lab">Nowa akcja</div>
+        <div class="form">
+          <label>Nazwa<input id="aName" type="text" placeholder="np. Zgłoszenie do Jiry" spellcheck="false" autocomplete="off"></label>
+          <label>Polecenie dla AI<textarea id="aPrompt" rows="4" placeholder="Co ma zrobić AI z zaznaczonym tekstem?" spellcheck="false"></textarea></label>
+          <div class="chips" id="sugg"></div>
+          <div class="note err" id="aMsg"></div>
+        </div>
+      </div>
+      <div class="actions"><button class="btn primary" id="aAdd">Dodaj akcję</button></div>
+    </section>
+
+    <section id="v-result" hidden>
+      <div class="bar">
+        <button class="icon-btn" id="back" aria-label="Wstecz"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <div id="status">Myślę…</div>
+      </div>
+      <div id="outWrap"><div id="out"></div></div>
+      <div class="actions">
+        <button class="btn" id="retry">Ponów</button>
+        <button class="btn" id="copy">Kopiuj</button>
+        <button class="btn" id="sendRes">Wyślij…</button>
+        <button class="btn primary" id="replace">Zamień</button>
+      </div>
+    </section>
+
+    <section id="v-key" hidden>
+      <p class="lead">Dodaj klucz API Anthropic, żeby zacząć korzystać z Write Mode Tool.</p>
+      <input id="keyInput" type="password" placeholder="sk-ant-…" spellcheck="false" autocomplete="off">
+      <div class="actions">
+        <button class="btn" id="getKey">Zdobądź klucz</button>
+        <button class="btn primary" id="saveKey">Zapisz</button>
+      </div>
+      <p class="note" id="keyNote">Klucz jest szyfrowany przez system i zapisany tylko na tym komputerze.</p>
+    </section>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

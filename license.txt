@@ -1,0 +1,29 @@
+WRITE MODE TOOL - LICENSE AND TERMS OF USE
+
+Please read this text carefully. Scroll to the end to be able to accept it.
+
+1. WHAT THIS PROGRAM IS
+Write Mode Tool is a personal, non-commercial project. It lets you select text in any Mac app, press a keyboard shortcut and have an AI model work on that text: translate it, shorten it for a chat, turn notes into tasks, write a commit message, make flashcards and run actions that you define yourself. It is NOT a product of Apple Inc. and is NOT affiliated with, endorsed by or sponsored by Apple Inc., Anthropic PBC, Microsoft Corporation or Google LLC.
+
+2. TRADEMARKS AND DESIGN
+The look of the program imitates the design language of Apple software. "Apple", "Apple Intelligence", "Writing Tools" and "Liquid Glass" are names, trademarks or designs belonging to Apple Inc. They are mentioned only to describe the style of the program. Before you share this program with other people, replace the design elements and names that resemble Apple products.
+
+3. YOUR TEXT IS SENT TO AN AI SERVICE
+When you use an action, the text you selected is sent over the internet to the Anthropic API, using the API key that you provide. Do not use the program on text you are not allowed to share with a third-party service, such as confidential, medical, legal or other sensitive material. Your API key is stored on this computer, encrypted with the macOS Keychain, in the folder %APPDATA%\Write Mode Tool, together with your contacts and your own actions.
+
+4. COSTS
+Every request to the AI service is billed to the account that owns your API key. You are solely responsible for all usage and costs. The author does not receive, store or pay for any of it.
+
+5. THE PROGRAM CONTROLS OTHER PROGRAMS
+To read your selection and to put a result back, the program simulates keyboard shortcuts (Cmd+C and Cmd+V) in the program you are using, and it temporarily uses the clipboard. The "Send to" action only opens a draft in your mail program or messaging app. It does not send anything by itself, you review and send the message yourself.
+
+6. AI OUTPUT CAN BE WRONG
+Results may contain mistakes, invented facts or inappropriate wording, and quizzes and flashcards may contain errors. You are responsible for checking every result before you use, send or publish it.
+
+7. NO WARRANTY
+The program is provided "as is", without warranty of any kind, express or implied, including merchantability, fitness for a particular purpose and non-infringement. The author is not liable for any damage, data loss, wrongly sent messages, costs or other consequences arising from the use of the program.
+
+8. REMOVAL
+You can remove the program at any time from dragging the app to the Trash. Delete that folder too if you want to remove your settings and API key.
+
+By ticking "I accept" in the installer you confirm that you have read and understood these terms and that you agree to them.
