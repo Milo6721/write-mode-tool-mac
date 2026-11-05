@@ -18,6 +18,10 @@ const PRESETS = [
   { label: 'F7', acc: 'F7' },
   { label: 'F10', acc: 'F10' },
 ];
+const KEYGLYPH = { Command: '⌘', Control: '⌃', Alt: '⌥', Shift: '⇧', Space: 'Spacja' };
+const hotkeyLabel = (acc) => String(acc).split('+').map((k) => KEYGLYPH[k] || k).join('');
+const HOTKEY_RE = /^((Command|Control|Alt|Shift)\+)*([A-Z0-9]|F([1-9]|1[0-9]|2[0-4])|Space)$/;
+const svcOn = (k) => (cfg().services || {})[k] !== false;
 const MODEL = () => process.env.WT_MODEL || cfg().model || 'claude-haiku-5-5';
 const QUALITY = new Set(['official', 'bizen', 'quiz', 'flashcards', 'tasks', 'calendar', 'precheck']); // akcje, w których opłaca się mocniejszy model
 const modelFor = (action) => (QUALITY.has(action) && !process.env.WT_MODEL ? 'claude-sonnet-5-5' : MODEL());
@@ -27,7 +31,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 /* ---------- ustawienia (klucz API szyfrowany przez system, kontakty i własne akcje) ---------- */
 let _cfg = null;
 const cfgFile = () => path.join(app.getPath('userData'), 'config.json');
-const DEFAULTS = () => ({ hotkey: PRESETS[0].acc, model: '', keyEnc: '', contacts: [], actions: [], tones: [], lastLang: '', autoSend: false });
+const DEFAULTS = () => ({ hotkey: PRESETS[0].acc, model: '', keyEnc: '', contacts: [], actions: [], tones: [], lastLang: '', autoSend: false, tray: true, showHome: true, services: { menu: true, lang: true, chat: true, mail: true } });
 function cfg() {
   if (_cfg) return _cfg;
   try { _cfg = { ...DEFAULTS(), ...JSON.parse(fs.readFileSync(cfgFile(), 'utf8').replace(/^﻿/, '')) }; }
@@ -184,7 +188,7 @@ async function openPopup(mode, incoming) {
   else { x = cursor.x - M + 8; y = cursor.y + 16 - M; }
   x = Math.max(wa.x, Math.min(x, wa.x + wa.width - W)); y = Math.max(wa.y, Math.min(y, wa.y + wa.height - H));
   const bounds = { x, y, width: W, height: H };
-  const preset = PRESETS.find((p) => p.acc === cfg().hotkey) || PRESETS[0];
+  const preset = { label: hotkeyLabel(cfg().hotkey) };
   const [sel, shot] = await Promise.all([
     incoming ? Promise.resolve({ text: incoming.text, app: incoming.app, prev: null }) : mode === 'select' ? grabSelection() : Promise.resolve({ text: '', app: '', prev: null }),
     shoot(display, bounds),
@@ -406,17 +410,17 @@ ipcMain.handle('sendTo', async (e, { contactId, channel, text }) => {
 
 /* ---------- Usługi (prawy przycisk → Usługi): szybkie akcje w ~/Library/Services ---------- */
 const SERVICES = [
-  { name: 'Write Mode Tool', view: 'menu' },
-  { name: 'Write Mode Tool: Przetłumacz', view: 'lang' },
-  { name: 'Write Mode Tool: Wyślij w Wiadomościach', view: 'chat' },
-  { name: 'Write Mode Tool: Wyślij e-mailem', view: 'mail' },
+  { key: 'menu', name: 'Write Mode Tool', view: 'menu' },
+  { key: 'lang', name: 'Write Mode Tool: Przetłumacz', view: 'lang' },
+  { key: 'chat', name: 'Write Mode Tool: Wyślij w Wiadomościach', view: 'chat' },
+  { key: 'mail', name: 'Write Mode Tool: Wyślij e-mailem', view: 'mail' },
 ];
 const xml = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 function serviceScript(view) {
   return 'd="$HOME/Library/Application Support/Write Mode Tool"; mkdir -p "$d"\n' +
     "f=$(osascript -e 'tell application \"System Events\" to get bundle identifier of first process whose frontmost is true')\n" +
     '{ echo "' + view + '"; echo "$f"; cat; } > "$d/in.tmp" && mv "$d/in.tmp" "$d/incoming.txt"\n' +
-    'open -a "Write Mode Tool"\n';
+    'open -g -a "Write Mode Tool"\n';
 }
 const PL_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">';
 function serviceFiles(sv, n) {
@@ -439,8 +443,9 @@ function serviceFiles(sv, n) {
 function installServices() {
   const dir = path.join(os.homedir(), 'Library', 'Services'); let changed = false;
   SERVICES.forEach((sv, n) => {
-    const base = path.join(dir, sv.name + '.workflow', 'Contents');
+    const wf = path.join(dir, sv.name + '.workflow'), base = path.join(wf, 'Contents');
     try {
+      if (!svcOn(sv.key)) { if (fs.existsSync(wf)) { fs.rmSync(wf, { recursive: true, force: true }); changed = true; } return; }
       fs.mkdirSync(base, { recursive: true });
       for (const [f, body] of serviceFiles(sv, n + 1)) {
         const fp = path.join(base, f); let cur = ''; try { cur = fs.readFileSync(fp, 'utf8'); } catch (e) { /* nowy plik */ }
@@ -524,30 +529,102 @@ ipcMain.handle('addCalendar', async (e, text) => {
   state.prev = null; log('calendar items=' + items.length); return { ok: true, n: items.length };
 });
 
+/* ---------- ustawienia i statystyki dla okna głównego ---------- */
+const homeSettings = () => ({
+  hotkey: cfg().hotkey, hotkeyLabel: hotkeyLabel(cfg().hotkey), presets: PRESETS.map((p) => ({ label: p.label, acc: p.acc })), model: cfg().model || '', autoSend: !!cfg().autoSend,
+  login: app.getLoginItemSettings(LOGIN()).openAtLogin, showHome: cfg().showHome !== false, tray: cfg().tray !== false,
+  services: Object.fromEntries(SERVICES.map((s) => [s.key, svcOn(s.key)])), hasKey: !!getKey(), version: app.getVersion(),
+});
+ipcMain.handle('settings:get', () => homeSettings());
+ipcMain.handle('settings:set', (e, k, v) => {
+  k = String(k);
+  if (k.startsWith('svc.')) { const key = k.slice(4); if (!SERVICES.some((s) => s.key === key)) return false; cfg().services = { ...(cfg().services || {}), [key]: !!v }; saveCfg(); installServices(); return true; }
+  if (k === 'model') { cfg().model = v === 'claude-sonnet-5-5' ? v : ''; saveCfg(); return true; }
+  v = !!v;
+  if (k === 'login') { app.setLoginItemSettings({ openAtLogin: v, ...LOGIN() }); if (tray) buildTray(); return true; }
+  if (k === 'autoSend' || k === 'showHome') { cfg()[k] = v; saveCfg(); if (tray) buildTray(); return true; }
+  if (k === 'tray') { cfg().tray = v; saveCfg(); setTray(v); return true; }
+  return false;
+});
+ipcMain.handle('settings:hotkey', (e, acc) => {
+  acc = String(acc);
+  if (!HOTKEY_RE.test(acc) || (!/^F\d/.test(acc) && !/(Command|Control|Alt)\+/.test(acc))) return { ok: false };
+  const prev = cfg().hotkey; cfg().hotkey = acc;
+  if (!registerHotkey(true)) { cfg().hotkey = prev; registerHotkey(true); return { ok: false }; }
+  saveCfg(); if (tray) buildTray(); return { ok: true, label: hotkeyLabel(acc) };
+});
+ipcMain.handle('homeData', () => ({ tones: cfg().tones || [], actions: cfg().actions || [] }));
+ipcMain.handle('study:overview', () => {
+  const s = study(), days = [];
+  for (let i = 13; i >= 0; i--) { const k = dayKey(Date.now() - i * DAY), v = s.daily[k] || { right: 0, total: 0 }; days.push({ d: k, right: v.right, total: v.total }); }
+  const all = Object.values(s.daily), answers = all.reduce((n, x) => n + x.total, 0), right = all.reduce((n, x) => n + x.right, 0), infos = s.decks.map(deckInfo);
+  const hardest = []; for (const d of s.decks) for (const it of d.items) if (it.wrong > 0) hardest.push({ q: it.q, wrong: it.wrong, deck: d.name });
+  hardest.sort((a, b) => b.wrong - a.wrong);
+  return { days, answers, accuracy: answers ? Math.round(right * 100 / answers) : null, items: infos.reduce((n, d) => n + d.count, 0), mastered: infos.reduce((n, d) => n + d.mastered, 0), streak: streak(),
+    decks: infos.map((d) => ({ name: d.name, pct: d.count ? Math.round(d.mastered * 100 / d.count) : 0 })), hardest: hardest.slice(0, 8) };
+});
+
 /* ---------- skrót i zasobnik ---------- */
-function registerHotkey() {
+function registerHotkey(quiet) {
   globalShortcut.unregisterAll();
-  const ok = globalShortcut.register(cfg().hotkey, () => openPopup('select').catch((e) => log('ERR', e && e.stack)));
+  let ok = false;
+  try { ok = globalShortcut.register(cfg().hotkey, () => openPopup('select').catch((e) => log('ERR', e && e.stack))); } catch (e) { ok = false; }
   log('register', cfg().hotkey, ok);
-  if (!ok) notify('Skrót ' + cfg().hotkey + ' jest zajęty przez inną aplikację. Wybierz inny z ikony w pasku menu.');
+  if (!ok && !quiet) notify('Skrót ' + hotkeyLabel(cfg().hotkey) + ' jest zajęty przez inną aplikację. Zmień go w oknie aplikacji (Ustawienia).');
+  return ok;
 }
 // Autostart: w spakowanej aplikacji sam plik .exe, w trybie deweloperskim Electron z folderem programu
 const LOGIN = () => ({});
+function setTray(on) { if (on) buildTray(); else if (tray) { tray.destroy(); tray = null; } }
 function buildTray() {
+  if (cfg().tray === false) return;
   const icon = nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')).resize({ width: 18, height: 18 });
   if (!tray) tray = new Tray(icon);
-  const login = app.getLoginItemSettings(LOGIN()).openAtLogin;
-  tray.setToolTip('Write Mode Tool (' + (PRESETS.find((p) => p.acc === cfg().hotkey) || PRESETS[0]).label + ')');
+  const login = app.getLoginItemSettings(LOGIN()).openAtLogin, hk = hotkeyLabel(cfg().hotkey);
+  tray.setToolTip('Write Mode Tool (' + hk + ')');
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Otwórz Write Mode Tool', click: () => openPopup('select') },
-    { label: 'Skrót', submenu: PRESETS.map((p) => ({ label: p.label, type: 'radio', checked: p.acc === cfg().hotkey, click: () => { cfg().hotkey = p.acc; saveCfg(); registerHotkey(); buildTray(); } })) },
-    { label: getKey() ? 'Zmień klucz API…' : 'Dodaj klucz API…', click: () => openPopup('key') },
+    { label: 'Otwórz Write Mode Tool', click: () => showHome() },
+    { label: 'Menu akcji (' + hk + ')', click: () => openPopup('select') },
+    { label: 'Fiszki i quizy', click: () => showHome('study') },
+    { label: 'Ustawienia…', click: () => showHome('settings') },
+    { type: 'separator' },
     { label: 'Wysyłaj wiadomości od razu (bez podglądu)', type: 'checkbox', checked: !!cfg().autoSend, click: (i) => { cfg().autoSend = i.checked; saveCfg(); } },
     { label: 'Uruchamiaj po zalogowaniu', type: 'checkbox', checked: login, click: (i) => { app.setLoginItemSettings({ openAtLogin: i.checked, ...LOGIN() }); } },
     { type: 'separator' },
     { label: 'Zakończ', click: () => { app.isQuitting = true; app.quit(); } },
   ]));
-  tray.on('click', () => openPopup('select'));
+  tray.removeAllListeners('click'); tray.on('click', () => openPopup('select'));
+}
+
+/* ---------- okno główne: Start, Fiszki i quizy, Statystyki, Personalizacja, Ustawienia ---------- */
+let home = null;
+function createHome() {
+  home = new BrowserWindow({
+    width: 1040, height: 700, minWidth: 780, minHeight: 540, show: false, title: 'Write Mode Tool',
+    titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 20, y: 20 }, vibrancy: 'under-window', visualEffectState: 'active', backgroundColor: '#00000000',
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true },
+  });
+  home.loadFile(path.join(__dirname, 'renderer', 'home.html'));
+  // zamknięcie okna tylko je chowa: aplikacja dalej obsługuje skrót i usługi z prawego przycisku
+  home.on('close', (e) => { if (!app.isQuitting) { e.preventDefault(); home.hide(); } });
+}
+function showHome(page) {
+  if (!home || home.isDestroyed()) createHome();
+  const show = () => { home.show(); home.focus(); if (page) home.webContents.send('home', page); };
+  if (home.webContents.isLoading()) home.once('ready-to-show', show); else show();
+}
+
+/* dane przykładowe tylko do testu dymnego (WT_SMOKE), żeby zrzuty ekranu pokazywały zawartość */
+function seedStudy() {
+  const s = study(); if (s.decks.length) return;
+  const card = (q, a, box, right, wrong) => ({ id: uid(), q, a, box, due: 0, right, wrong });
+  const quiz = (q, opts, correct, why, right, wrong) => ({ id: uid(), q, opts, correct, why, right, wrong });
+  s.decks.push({ id: uid(), name: 'Układ Słoneczny', kind: 'cards', created: Date.now(), last: Date.now(), history: [{ t: 1, right: 3, total: 8 }, { t: 2, right: 5, total: 8 }, { t: 3, right: 7, total: 8 }], items: [
+    card('Która planeta jest największa?', 'Jowisz', 4, 5, 1), card('Co to jest jednostka astronomiczna?', 'Średnia odległość Ziemi od Słońca, ok. 150 mln km', 1, 2, 3), card('Dlaczego Mars jest czerwony?', 'Pokrywa go pył bogaty w tlenki żelaza', 0, 0, 2), card('Ile planet ma Układ Słoneczny?', 'Osiem', 5, 6, 0)] });
+  s.decks.push({ id: uid(), name: 'Quiz: Fotosynteza', kind: 'quiz', created: Date.now(), last: Date.now() - 1e8, history: [{ t: 1, right: 2, total: 3 }, { t: 2, right: 3, total: 3 }], items: [
+    quiz('Gdzie zachodzi fotosynteza?', ['W mitochondriach', 'W chloroplastach', 'W jądrze komórkowym', 'W rybosomach'], 1, 'Chloroplasty zawierają chlorofil.', 2, 1), quiz('Który gaz rośliny pobierają?', ['Tlen', 'Azot', 'Dwutlenek węgla', 'Wodór'], 2, 'CO₂ jest źródłem węgla.', 3, 0)] });
+  [[0, 12, 9], [1, 18, 14], [2, 9, 7], [3, 22, 17], [4, 14, 9], [6, 6, 5], [8, 16, 11]].forEach(([ago, total, right]) => { s.daily[dayKey(Date.now() - ago * DAY)] = { right, total }; });
+  saveStudy();
 }
 
 /* ---------- test dymny (WT_SMOKE=1): sprawdza usługi, składnię skryptów AppleScript i okno; używany w GitHub Actions ---------- */
@@ -582,6 +659,18 @@ async function smoke() {
   add({ name: 'service-flow: okno widoczne', ok: !!(win && win.isVisible()), err: '' });
   add({ name: 'service-flow: tekst odebrany', ok: state.text.startsWith('Hej, dzięki'), err: 'text=' + state.text.slice(0, 40) });
   await sleep(1500);
+  // okno główne: renderuje się i przełącza strony; zrzuty widoku (capturePage nie wymaga zgody na nagrywanie ekranu)
+  if (process.env.WT_SMOKE_SHOTS) {
+    const dir = process.env.WT_SMOKE_SHOTS; fs.mkdirSync(dir, { recursive: true });
+    const snap = async (w, name) => { try { const img = await w.webContents.capturePage(); fs.writeFileSync(path.join(dir, name + '.png'), img.toPNG()); return true; } catch (e) { return false; } };
+    const run = (code) => home.webContents.executeJavaScript(code);
+    showHome(); await sleep(3000);
+    add({ name: 'home: okno widoczne', ok: !!(home && home.isVisible()), err: '' });
+    for (const p of ['start', 'study', 'stats', 'people', 'settings']) { await run('go(' + JSON.stringify(p) + ')'); await sleep(1700); add({ name: 'home: ' + p, ok: await snap(home, 'home-' + p), err: '' }); }
+    await run("go('study')"); await sleep(1500); await run("document.querySelector('#p-study [data-deck]').click()"); await sleep(1800); await snap(home, 'home-deck');
+    await run("document.querySelector('#acts .btn').click()"); await sleep(1500); await snap(home, 'home-card-front'); await run('flipCard()'); await sleep(1200); await snap(home, 'home-card-back');
+    add({ name: 'popup: zrzut', ok: await snap(win, 'popup'), err: '' });
+  }
   R.ok = R.checks.every((c) => c.ok);
   const out = process.env.WT_SMOKE_OUT || path.join(os.tmpdir(), 'wmt-smoke.json');
   fs.writeFileSync(out, JSON.stringify(R, null, 2)); console.log(JSON.stringify(R, null, 2));
@@ -591,9 +680,14 @@ async function smoke() {
 
 app.on('second-instance', () => openPopup('select'));
 app.on('window-all-closed', (e) => e.preventDefault());
+app.on('activate', () => showHome());
+app.on('before-quit', () => { app.isQuitting = true; });
 app.on('will-quit', () => { globalShortcut.unregisterAll(); });
 app.whenReady().then(() => {
-  if (app.dock) app.dock.hide();
+  if (app.dock) app.dock.show();
+  if (process.env.WT_SMOKE) seedStudy();
+  Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'windowMenu' }]));
   createWindow(); buildTray(); registerHotkey(); installServices(); watchIncoming(); loadAppleContacts().catch(() => {});
+  if (!process.env.WT_SMOKE && cfg().showHome !== false) showHome();
   if (process.env.WT_SMOKE) smoke().catch((e) => { console.error('SMOKE CRASH', e); app.exit(2); });
 });

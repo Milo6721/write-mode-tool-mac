@@ -1,27 +1,49 @@
 {
   "name": "write-mode-tool",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Write Mode Tool dla macOS: zaznacz tekst, prawy przycisk (Usługi) lub skrót, wybierz akcję AI",
   "author": "Write Mode Tool",
   "main": "main.js",
-  "scripts": { "start": "electron .", "dist": "electron-builder --mac --publish never" },
-  "devDependencies": { "electron": "^44.8.0", "electron-builder": "^26.0.0" },
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --mac --publish never"
+  },
+  "devDependencies": {
+    "electron": "^44.8.0",
+    "electron-builder": "^26.0.0"
+  },
   "build": {
     "appId": "pl.writemodetool.app",
     "productName": "Write Mode Tool",
-    "files": ["main.js", "preload.js", "renderer/**", "assets/**", "package.json"],
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**",
+      "assets/**",
+      "package.json"
+    ],
     "mac": {
-      "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
       "category": "public.app-category.productivity",
       "icon": "assets/icon.png",
       "identity": null,
       "extendInfo": {
-        "LSUIElement": true,
         "NSAppleEventsUsageDescription": "Write Mode Tool potrzebuje Automatyzacji, aby wkleić wynik do aplikacji, otworzyć Kontakty i Wiadomości.",
         "NSContactsUsageDescription": "Write Mode Tool pokazuje Twoje kontakty, żebyś mógł wysłać tekst do wybranej osoby."
       }
     },
-    "dmg": { "title": "Write Mode Tool", "artifactName": "Write-Mode-Tool-${arch}.dmg" }
+    "dmg": {
+      "title": "Write Mode Tool",
+      "artifactName": "Write-Mode-Tool-${arch}.dmg"
+    }
   }
 }
