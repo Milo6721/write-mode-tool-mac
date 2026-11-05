@@ -14,12 +14,12 @@ jobs:
       - name: Run the app in smoke-test mode and take a screenshot
         env:
           WT_SMOKE: "1"
-          WT_SMOKE_HOLD: "3000"
+          WT_SMOKE_HOLD: "12000"
           WT_SMOKE_OUT: ${{ runner.temp }}/smoke.json
           ANTHROPIC_API_KEY: sk-ant-api03-FAKEFAKEFAKEFAKEFAKEFAKE
         run: |
           mkdir -p shots
-          ( sleep 11; screencapture -x shots/popup.png || true ) &
+          ( for t in 8 10 12 14 16 18; do sleep 2; screencapture -x shots/popup-$t.png || true; done ) &
           npx electron . --no-sandbox || echo "electron exit code $?"
           wait
           cp "$RUNNER_TEMP/smoke.json" shots/smoke.json || true
