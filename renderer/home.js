@@ -72,7 +72,7 @@ const setHk = (l) => { $('#hk').textContent = l; };
 
 /* ---------- Start ---------- */
 RENDER.start = async (el) => {
-  const [L, s] = await Promise.all([api.studyList(), api.settingsGet()]); S = s; setHk(s.hotkeyLabel);
+  const [L, s] = await Promise.all([bridge.studyList(), bridge.settingsGet()]); S = s; setHk(s.hotkeyLabel);
   const acc = L.today.total ? Math.round(L.today.right * 100 / L.today.total) : null;
   const due = L.decks.filter((d) => d.kind === 'cards').reduce((n, d) => n + d.due, 0); setBadge(due);
   const top = L.decks.slice(0, 3);
@@ -94,7 +94,7 @@ RENDER.start = async (el) => {
 /* ---------- Fiszki i quizy ---------- */
 RENDER.study = async (el) => {
   if (pendingDeck) { const id = pendingDeck; pendingDeck = null; return renderDeck(el, id); }
-  const L = await api.studyList(); setBadge(L.decks.filter((d) => d.kind === 'cards').reduce((n, d) => n + d.due, 0));
+  const L = await bridge.studyList(); setBadge(L.decks.filter((d) => d.kind === 'cards').reduce((n, d) => n + d.due, 0));
   el.innerHTML = '<header class="ph rise"><h1>Fiszki i quizy</h1><p>Zestawy powstają z zaznaczonego tekstu. Naciśnij skrót i wybierz „Fiszki” albo „Quiz z tekstu”.</p></header>' +
     (L.decks.length ? '<div class="deckgrid">' + L.decks.map((d) => {
       const pct = d.count ? Math.round(d.mastered * 100 / d.count) : 0;
@@ -105,7 +105,7 @@ RENDER.study = async (el) => {
 const openDeck = (id) => swap($('#p-study'), () => renderDeck($('#p-study'), id), 1);
 const closeDeck = () => swap($('#p-study'), () => RENDER.study($('#p-study')), -1);
 async function renderDeck(el, id) {
-  const d = await api.studyGet(id); if (!d) return RENDER.study(el);
+  const d = await bridge.studyGet(id); if (!d) return RENDER.study(el);
   curDeck = d; const inf = d.info, cards = d.kind === 'cards', pct = inf.count ? Math.round(inf.mastered * 100 / inf.count) : 0;
   const due = cards ? d.items.filter((i) => !i.due || i.due <= Date.now()) : d.items, hardQ = d.items.filter((i) => i.wrong > 0).sort((a, b) => b.wrong - a.wrong);
   el.innerHTML = '<button class="back rise" data-back>' + ic('back') + ' Wszystkie zestawy</button>' +
@@ -119,7 +119,7 @@ async function renderDeck(el, id) {
   $('[data-back]', el).onclick = closeDeck;
   const del = $('[data-del]', el); del.onclick = async () => {
     if (!del.classList.contains('sure')) { del.classList.add('sure'); del.style.background = 'rgba(255,69,58,.3)'; del.title = 'Kliknij jeszcze raz, żeby usunąć'; setTimeout(() => { del.classList.remove('sure'); del.style.background = ''; }, 2500); return; }
-    await api.studyDelete(d.id); closeDeck();
+    await bridge.studyDelete(d.id); closeDeck();
   };
 }
 
@@ -145,7 +145,7 @@ function flipCard() {
   $$('.grades .btn', $('#sFoot')).forEach((b) => { b.onclick = () => gradeCard(+b.dataset.g); });
 }
 async function gradeCard(g) {
-  const s = sess; if (!s || s.kind !== 'cards' || !s.flipped || s.busy) return; s.busy = true; const it = s.queue.shift(); api.studyReview(s.deck.id, it.id, g);
+  const s = sess; if (!s || s.kind !== 'cards' || !s.flipped || s.busy) return; s.busy = true; const it = s.queue.shift(); bridge.studyReview(s.deck.id, it.id, g);
   if (!(it.id in s.first)) s.first[it.id] = g >= 1; if (g === 0) s.queue.splice(Math.min(3, s.queue.length), 0, it); else s.known++;
   prog(s.known * 100 / s.total, s.known + '/' + s.total); const w = $('#fcWrap'); w.className = 'fcWrap o' + g; await sleep(290); if (sess === s) nextCard();
 }
@@ -158,7 +158,7 @@ function nextQuestion() {
 }
 function pickOption(b, o, opts) {
   const s = sess; if (!s || s.kind !== 'quiz' || s.locked) return; s.locked = true; const it = s.queue[s.idx];
-  api.studyReview(s.deck.id, it.id, o.ok ? 2 : 0); s.first[it.id] = o.ok;
+  bridge.studyReview(s.deck.id, it.id, o.ok ? 2 : 0); s.first[it.id] = o.ok;
   $$('.opt', $('#opts')).forEach((el, i) => { el.classList.add('lock'); if (opts[i].ok) el.classList.add('ok'); }); if (!o.ok) b.classList.add('bad');
   prog((s.idx + 1) * 100 / s.total, (s.idx + 1) + '/' + s.total);
   $('#sFoot').innerHTML = (it.why ? '<div class="why">' + esc(it.why) + '</div>' : '') + '<button class="btn primary" id="sNext">' + (s.idx + 1 >= s.total ? 'Zobacz wynik' : 'Dalej') + ' <kbd>↵</kbd></button>';
@@ -167,7 +167,7 @@ function pickOption(b, o, opts) {
 function finishSession() {
   const s = sess, ids = Object.keys(s.first), right = ids.filter((i) => s.first[i]).length, total = s.total, pct = total ? Math.round(right * 100 / total) : 0;
   const hist = s.deck.history || [], prev = hist[hist.length - 1], prevPct = prev && prev.total ? Math.round(prev.right * 100 / prev.total) : null, best = hist.reduce((m, x) => Math.max(m, x.total ? Math.round(x.right * 100 / x.total) : 0), 0);
-  api.studySession(s.deck.id, right, total); s.wrong = s.items.filter((i) => !s.first[i.id]); prog(100, total + '/' + total);
+  bridge.studySession(s.deck.id, right, total); s.wrong = s.items.filter((i) => !s.first[i.id]); prog(100, total + '/' + total);
   const title = pct >= 90 ? 'Świetnie!' : pct >= 70 ? 'Dobrze Ci idzie' : pct >= 40 ? 'Jeszcze trochę' : 'Warto powtórzyć';
   let sub = right + ' z ' + total + (s.kind === 'quiz' ? ' pytań za pierwszym razem.' : ' fiszek umiesz od razu.');
   if (prevPct != null) { const d = pct - prevPct; sub += '<br>' + (d > 0 ? '<span class="up">+' + d + ' pkt względem ostatniej sesji</span>' : d < 0 ? '<span class="down">' + d + ' pkt względem ostatniej sesji</span>' : 'Tyle samo co ostatnio'); }
@@ -189,7 +189,7 @@ document.addEventListener('keydown', (e) => {
 
 /* ---------- Statystyki ---------- */
 RENDER.stats = async (el) => {
-  const O = await api.studyOverview(), max = Math.max(1, ...O.days.map((d) => d.total)), DAYS = ['nd', 'pn', 'wt', 'śr', 'cz', 'pt', 'sb'];
+  const O = await bridge.studyOverview(), max = Math.max(1, ...O.days.map((d) => d.total)), DAYS = ['nd', 'pn', 'wt', 'śr', 'cz', 'pt', 'sb'];
   el.innerHTML = '<header class="ph rise"><h1>Statystyki</h1><p>Jak Ci idzie z nauką w ostatnich dwóch tygodniach.</p></header>' +
     '<div class="grid3"><div class="card glass stat rise"><span class="si purple">' + ic('check') + '</span><b data-count="' + O.answers + '">0</b><span>odpowiedzi łącznie</span></div>' +
     '<div class="card glass stat rise"><span class="si green">' + ic('chart') + '</span><b' + (O.accuracy == null ? '>–' : ' data-count="' + O.accuracy + '" data-suf="%">0') + '</b><span>skuteczność ogółem</span></div>' +
@@ -201,7 +201,7 @@ RENDER.stats = async (el) => {
 
 /* ---------- Personalizacja ---------- */
 RENDER.people = async (el) => {
-  const D = await api.homeData(), tones = D.tones || [], acts = D.actions || [];
+  const D = await bridge.homeData(), tones = D.tones || [], acts = D.actions || [];
   el.innerHTML = '<header class="ph rise"><h1>Personalizacja</h1><p>Ton dla konkretnych osób i własne akcje, które pojawią się w menu przy zaznaczonym tekście.</p></header><div class="cols">' +
     '<div class="card glass rise"><h3>Ton dla osób</h3><p class="note" style="margin:4px 0 8px">Zapisz, jak piszesz do kogoś. W „Odpowiedz…” wybierzesz tę osobę.</p><div id="tList">' +
     (tones.length ? tones.map((t) => '<div class="item"><span class="av" style="background:' + colorOf(t.name) + '">' + esc(initials(t.name)) + '</span><div class="ctx"><div class="cn">' + esc(t.name) + '</div><div class="cs">' + esc(t.tone) + '</div></div><button class="icon danger" data-dt="' + esc(t.name) + '" title="Usuń">' + ic('trash') + '</button></div>').join('') : '<p class="note" style="padding:10px 0">Nikogo jeszcze nie dodano.</p>') + '</div>' +
@@ -211,10 +211,10 @@ RENDER.people = async (el) => {
     '<div class="form"><input id="aName" placeholder="Nazwa akcji" spellcheck="false"><textarea id="aPrompt" rows="3" placeholder="Co ma zrobić AI z zaznaczonym tekstem?" spellcheck="false"></textarea><div class="msg" id="aMsg"></div><button class="btn primary" id="aAdd">' + ic('plus') + 'Dodaj akcję</button></div></div></div>';
   const redo = () => swap(el, () => RENDER.people(el), 1);
   $$('[data-ch]', el).forEach((b) => { b.onclick = () => { $('#tTone', el).value = b.dataset.ch; }; });
-  $('#tAdd', el).onclick = async () => { const n = $('#tName', el).value.trim(), t = $('#tTone', el).value.trim(); if (!n || !t) { $('#tMsg', el).textContent = 'Wpisz osobę i opisz, jak do niej piszesz.'; return; } await api.saveTone(n, t); redo(); };
-  $$('[data-dt]', el).forEach((b) => { b.onclick = async () => { await api.saveTone(b.dataset.dt, ''); redo(); }; });
-  $('#aAdd', el).onclick = async () => { const n = $('#aName', el).value.trim(), p = $('#aPrompt', el).value.trim(); if (!n || !p) { $('#aMsg', el).textContent = 'Wpisz nazwę i polecenie.'; return; } await api.saveActions([...acts, { id: '', name: n, prompt: p }]); redo(); };
-  $$('[data-da]', el).forEach((b) => { b.onclick = async () => { await api.saveActions(acts.filter((x) => x.id !== b.dataset.da)); redo(); }; });
+  $('#tAdd', el).onclick = async () => { const n = $('#tName', el).value.trim(), t = $('#tTone', el).value.trim(); if (!n || !t) { $('#tMsg', el).textContent = 'Wpisz osobę i opisz, jak do niej piszesz.'; return; } await bridge.saveTone(n, t); redo(); };
+  $$('[data-dt]', el).forEach((b) => { b.onclick = async () => { await bridge.saveTone(b.dataset.dt, ''); redo(); }; });
+  $('#aAdd', el).onclick = async () => { const n = $('#aName', el).value.trim(), p = $('#aPrompt', el).value.trim(); if (!n || !p) { $('#aMsg', el).textContent = 'Wpisz nazwę i polecenie.'; return; } await bridge.saveActions([...acts, { id: '', name: n, prompt: p }]); redo(); };
+  $$('[data-da]', el).forEach((b) => { b.onclick = async () => { await bridge.saveActions(acts.filter((x) => x.id !== b.dataset.da)); redo(); }; });
 };
 
 /* ---------- Ustawienia ---------- */
@@ -229,7 +229,7 @@ const KEYMAP = { Command: '⌘', Control: '⌃', Alt: '⌥', Shift: '⇧', Space
 const keycaps = (acc) => acc.split('+').map((k) => '<kbd>' + esc(KEYMAP[k] || k) + '</kbd>').join('');
 const sw = (k, on) => '<button class="sw" role="switch" aria-checked="' + !!on + '" data-k="' + k + '"><i></i></button>';
 RENDER.settings = async (el) => {
-  const s = await api.settingsGet(); S = s; setHk(s.hotkeyLabel); const sv = s.services, fast = !s.model || s.model.includes('haiku');
+  const s = await bridge.settingsGet(); S = s; setHk(s.hotkeyLabel); const sv = s.services, fast = !s.model || s.model.includes('haiku');
   el.innerHTML = '<header class="ph rise"><h1>Ustawienia</h1><p>Skróty, usługi z prawego przycisku i zachowanie aplikacji.</p></header>' +
     '<div class="sec rise">Skrót klawiszowy</div><div class="card glass group rise"><div class="srow"><div class="st"><b>Skrót główny</b><span>Otwiera menu akcji dla zaznaczonego tekstu w dowolnej aplikacji</span></div><div class="ctl"><div class="keys" id="keys">' + keycaps(s.hotkey) + '<span class="hint">Naciśnij nowy skrót…</span></div><button class="btn" id="recBtn">Zmień</button></div></div>' +
     '<div class="presets" id="presets">' + s.presets.map((p) => '<button class="chip" data-acc="' + esc(p.acc) + '">' + esc(p.label) + '</button>').join('') + '</div><div class="msg" id="hkMsg" style="padding-bottom:10px"></div></div>' +
@@ -241,11 +241,11 @@ RENDER.settings = async (el) => {
     '<div class="sec rise">Klucz API Anthropic</div><div class="card glass group rise"><div class="srow" style="padding-bottom:12px"><div class="st"><b>Klucz</b><span>Zapisany zaszyfrowany na tym komputerze</span></div><span class="pill ' + (s.hasKey ? 'ok' : 'no') + '" id="keyPill">' + (s.hasKey ? 'Zapisany' : 'Brak klucza') + '</span></div>' +
     '<div class="keyin"><input id="keyIn" type="password" placeholder="sk-ant-…" spellcheck="false" autocomplete="off"><button class="btn primary" id="keySave">Zapisz</button><button class="btn" id="keyGet">Zdobądź klucz</button></div><div class="msg" id="keyMsg" style="padding-bottom:12px"></div></div>' +
     '<p class="note rise" style="margin-top:18px">Write Mode Tool ' + esc(s.version) + ' · projekt niezależny, nie jest produktem Apple Inc. ani Anthropic PBC.</p>';
-  $$('.sw', el).forEach((b) => { b.onclick = async () => { const on = b.getAttribute('aria-checked') !== 'true'; b.setAttribute('aria-checked', on); await api.settingsSet(b.dataset.k, on); }; });
-  $$('#seg button', el).forEach((b, i) => { b.onclick = async () => { $$('#seg button', el).forEach((x) => x.classList.toggle('on', x === b)); $('#seg i', el).style.transform = 'translateX(' + i * 100 + '%)'; await api.settingsSet('model', b.dataset.m); }; });
+  $$('.sw', el).forEach((b) => { b.onclick = async () => { const on = b.getAttribute('aria-checked') !== 'true'; b.setAttribute('aria-checked', on); await bridge.settingsSet(b.dataset.k, on); }; });
+  $$('#seg button', el).forEach((b, i) => { b.onclick = async () => { $$('#seg button', el).forEach((x) => x.classList.toggle('on', x === b)); $('#seg i', el).style.transform = 'translateX(' + i * 100 + '%)'; await bridge.settingsSet('model', b.dataset.m); }; });
   const setKeys = (acc, label) => { $('#keys', el).innerHTML = keycaps(acc) + '<span class="hint">Naciśnij nowy skrót…</span>'; setHk(label); $('#hkMsg', el).textContent = ''; };
   const applyHk = async (acc) => {
-    const r = await api.setHotkey(acc), box = $('#keys', el);
+    const r = await bridge.setHotkey(acc), box = $('#keys', el);
     if (r.ok) { S.hotkey = acc; setKeys(acc, r.label); $('#hkMsg', el).className = 'msg ok'; $('#hkMsg', el).textContent = 'Zapisano: ' + r.label; }
     else { box.classList.remove('bad'); void box.offsetWidth; box.classList.add('bad'); $('#hkMsg', el).className = 'msg'; $('#hkMsg', el).textContent = 'Ten skrót jest zajęty przez system lub inną aplikację.'; }
   };
@@ -256,9 +256,9 @@ RENDER.settings = async (el) => {
     const onKey = (e) => { e.preventDefault(); e.stopPropagation(); if (e.key === 'Escape') return stop(); if (['Meta', 'Control', 'Alt', 'Shift'].includes(e.key)) return; const acc = toAccel(e); if (!acc) { box.classList.remove('bad'); void box.offsetWidth; box.classList.add('bad'); $('#hkMsg', el).className = 'msg'; $('#hkMsg', el).textContent = 'Dodaj klawisz ⌘, ⌃ lub ⌥ i literę.'; return; } stop(); applyHk(acc); };
     const start = $('#recBtn', el).onclick; btn.onclick = stop; window.addEventListener('keydown', onKey, true);
   };
-  $('#keyGet', el).onclick = () => api.openConsole();
+  $('#keyGet', el).onclick = () => bridge.openConsole();
   $('#keySave', el).onclick = async () => {
-    const v = $('#keyIn', el).value.trim(); if (!v) return; const r = await api.setKey(v), m = $('#keyMsg', el);
+    const v = $('#keyIn', el).value.trim(); if (!v) return; const r = await bridge.setKey(v), m = $('#keyMsg', el);
     if (r === 'ok' || r === true) { m.className = 'msg ok'; m.textContent = 'Klucz zapisany.'; $('#keyIn', el).value = ''; const p = $('#keyPill', el); p.className = 'pill ok'; p.textContent = 'Zapisany'; }
     else { m.className = 'msg'; m.textContent = r === 'bad' ? 'To nie wygląda na klucz API. Zaczyna się od sk-ant- i nie ma spacji ani polskich liter.' : 'Szyfrowanie systemowe jest niedostępne.'; }
   };
@@ -266,13 +266,13 @@ RENDER.settings = async (el) => {
 
 /* ---------- start ---------- */
 $$('#nav button').forEach((b) => { b.onclick = () => go(b.dataset.p); });
-const api = new Proxy({}, { get: (_, k) => (window.api ? window.api[k] : undefined) });
+const bridge = new Proxy({}, { get: (_, k) => (window.api ? window.api[k] : undefined) });
 function boot() {
   if (demo) document.body.classList.add('fallback');
   const first = (location.search.match(/page=(\w+)/) || [])[1] || 'start';
   go(first).then(async () => {
-    api.settingsGet().then((s) => { S = s; setHk(s.hotkeyLabel); $('#ver').textContent = 'wersja ' + s.version; });
-    api.studyList().then((L) => setBadge(L.decks.filter((d) => d.kind === 'cards').reduce((n, d) => n + d.due, 0)));
+    bridge.settingsGet().then((s) => { S = s; setHk(s.hotkeyLabel); $('#ver').textContent = 'wersja ' + s.version; });
+    bridge.studyList().then((L) => setBadge(L.decks.filter((d) => d.kind === 'cards').reduce((n, d) => n + d.due, 0)));
     if (demo) { const q = location.search; const m = q.match(/open=(\w+)/); if (m) { await sleep(900); pendingDeck = null; if (m[1] === 'deck') { await openDeck('d1'); } else if (m[1] === 'cards' || m[1] === 'quiz') { await openDeck(m[1] === 'cards' ? 'd1' : 'd2'); await sleep(900); startSession(m[1], curDeck.items); } } }
   });
   if (window.api && window.api.onHome) window.api.onHome((p) => { if (ORDER.includes(p)) { busy = false; go(p); } });
