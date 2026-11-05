@@ -663,13 +663,17 @@ async function smoke() {
   if (process.env.WT_SMOKE_SHOTS) {
     const dir = process.env.WT_SMOKE_SHOTS; fs.mkdirSync(dir, { recursive: true });
     const snap = async (w, name) => { try { const img = await w.webContents.capturePage(); fs.writeFileSync(path.join(dir, name + '.png'), img.toPNG()); return true; } catch (e) { return false; } };
-    const run = (code) => home.webContents.executeJavaScript(code);
-    showHome(); await sleep(3000);
+    const consoleLog = [];
+    const run = (code) => home.webContents.executeJavaScript('(async () => { try { ' + code + '; return "ok"; } catch (e) { return "ERR " + (e && e.message); } })()');
+    showHome(); home.webContents.on('console-message', (e, level, message, line, src) => consoleLog.push(level + ' ' + message + ' @' + path.basename(String(src)) + ':' + line));
+    await sleep(3000);
+    add({ name: 'home: skrypt ladowania', ok: (await run('go')) === 'ok', err: await run('document.title + " | " + typeof go + " | " + typeof window.api + " | pages=" + document.querySelectorAll(".page").length') });
     add({ name: 'home: okno widoczne', ok: !!(home && home.isVisible()), err: '' });
     for (const p of ['start', 'study', 'stats', 'people', 'settings']) { await run('go(' + JSON.stringify(p) + ')'); await sleep(1700); add({ name: 'home: ' + p, ok: await snap(home, 'home-' + p), err: '' }); }
     await run("go('study')"); await sleep(1500); await run("document.querySelector('#p-study [data-deck]').click()"); await sleep(1800); await snap(home, 'home-deck');
     await run("document.querySelector('#acts .btn').click()"); await sleep(1500); await snap(home, 'home-card-front'); await run('flipCard()'); await sleep(1200); await snap(home, 'home-card-back');
     add({ name: 'popup: zrzut', ok: await snap(win, 'popup'), err: '' });
+    fs.writeFileSync(path.join(dir, 'console.txt'), consoleLog.join(String.fromCharCode(10)));
   }
   R.ok = R.checks.every((c) => c.ok);
   const out = process.env.WT_SMOKE_OUT || path.join(os.tmpdir(), 'wmt-smoke.json');
