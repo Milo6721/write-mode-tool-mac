@@ -87,6 +87,67 @@
       <div class="actions"><button class="btn primary" id="aAdd">Dodaj akcję</button></div>
     </section>
 
+    <section id="v-tone" hidden>
+      <div class="bar"><button class="icon-btn" id="toneBack" aria-label="Wstecz"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><div class="stitle">Odpowiedz…</div></div>
+      <div class="scrollbox" id="toneBox"></div>
+    </section>
+
+    <section id="v-people" hidden>
+      <div class="bar"><button class="icon-btn" id="peopleBack" aria-label="Wstecz"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><div class="stitle">Ton dla osób</div></div>
+      <div class="note" style="padding:0 6px">Zapisz, jak piszesz do danej osoby. Odpowiedzi do niej będą w tym stylu.</div>
+      <div class="scrollbox"><div id="people"></div></div>
+      <div class="actions"><button class="btn primary" id="addPerson">Dodaj osobę</button></div>
+    </section>
+
+    <section id="v-ptone" hidden>
+      <div class="bar"><button class="icon-btn" id="ptoneBack" aria-label="Wstecz"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><div class="stitle">Ton dla osoby</div></div>
+      <div class="form">
+        <label>Osoba<input id="pName" list="pNames" type="text" placeholder="np. Anna Kowalska" spellcheck="false" autocomplete="off"></label>
+        <datalist id="pNames"></datalist>
+        <label>Jak do niej piszesz?<input id="pTone" type="text" placeholder="np. na ty, luźno, z emoji" spellcheck="false" autocomplete="off"></label>
+        <div class="chips" id="pChips"></div>
+        <div class="note err" id="pMsg"></div>
+      </div>
+      <div class="actions"><button class="btn" id="pCancel">Anuluj</button><button class="btn primary" id="pSave">Zapisz</button></div>
+    </section>
+
+    <section id="v-study" hidden>
+      <div class="bar"><button class="icon-btn" id="studyBack" aria-label="Wstecz"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><div class="stitle">Moje fiszki i quizy</div></div>
+      <div class="scrollbox"><div id="studyHead"></div><div id="decks"></div></div>
+    </section>
+
+    <section id="v-deck" hidden>
+      <div class="bar"><button class="icon-btn" id="deckBack" aria-label="Wstecz"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><div class="stitle" id="deckTitle">Zestaw</div><button class="icon-btn small" id="deckDel" title="Usuń zestaw" aria-label="Usuń zestaw"><svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></svg></button></div>
+      <div class="scrollbox" id="deckBox"></div>
+    </section>
+
+    <section id="v-cards" hidden>
+      <div class="bar"><button class="icon-btn" id="cardsBack" aria-label="Wstecz"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><div class="prog"><i id="cardsProg"></i></div><div class="cnt" id="cardsCnt"></div></div>
+      <div id="cardArea"><div id="cardWrap"><div id="card"><div class="face front"><span class="faceLab">Pytanie</span><div class="ft" id="cardQ"></div></div><div class="face back"><span class="faceLab">Odpowiedź</span><div class="ft" id="cardA"></div></div></div></div></div>
+      <div class="note hint" id="cardHint">Kliknij kartę, żeby zobaczyć odpowiedź</div>
+      <div class="actions grades" id="grades" hidden><button class="btn g0" data-g="0">Nie umiem</button><button class="btn g1" data-g="1">Z trudem</button><button class="btn g2" data-g="2">Umiem</button></div>
+    </section>
+
+    <section id="v-quiz" hidden>
+      <div class="bar"><button class="icon-btn" id="quizBack" aria-label="Wstecz"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><div class="prog"><i id="quizProg"></i></div><div class="cnt" id="quizCnt"></div></div>
+      <div id="quizQ"></div>
+      <div id="quizOpts"></div>
+      <div id="quizWhy" hidden></div>
+      <div class="actions"><button class="btn primary" id="quizNext" hidden>Dalej</button></div>
+    </section>
+
+    <section id="v-sum" hidden>
+      <div id="sumBox"></div>
+      <div class="actions"><button class="btn" id="sumAgain" hidden>Powtórz błędne</button><button class="btn primary" id="sumDone">Gotowe</button></div>
+    </section>
+
+    <section id="v-make" hidden>
+      <div class="bar"><button class="icon-btn" id="makeBack" aria-label="Wstecz"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><div class="stitle" id="makeStatus">Tworzę fiszki…</div></div>
+      <div id="makeArt" class="busy"><div class="mc m1"></div><div class="mc m2"></div><div class="mc m3"><i id="makeNum">0</i></div></div>
+      <div id="makeMsg" class="lead"></div>
+      <div class="actions" id="makeBtns" hidden><button class="btn" id="makeClose">Zamknij</button><button class="btn primary" id="makeGo">Ucz się teraz</button></div>
+    </section>
+
     <section id="v-result" hidden>
       <div class="bar">
         <button class="icon-btn" id="back" aria-label="Wstecz"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
