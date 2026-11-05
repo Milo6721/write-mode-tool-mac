@@ -205,7 +205,8 @@ function start(action, instruction) {
   st.last = { action, instruction }; st.buf = '';
   show('result'); $('out').className = ''; $('out').textContent = '';
   $('status').textContent = 'Myślę…'; $('status').classList.add('shimmer');
-  for (const id of ['retry', 'copy', 'sendRes', 'replace', 'cal']) $(id).disabled = true;
+  for (const id of ['retry', 'copy', 'sendRes', 'replace', 'cal', 'note']) $(id).disabled = true;
+  $('note').textContent = 'Do Notatek';
   $('cal').hidden = action !== 'calendar'; $('cal').textContent = 'Do kalendarza';
   $('replace').hidden = (action === 'ask' && st.hasSel) || action === 'reply' || action === 'calendar'; $('replace').textContent = st.hasSel ? 'Zamień' : 'Wstaw'; $('copy').textContent = 'Kopiuj';
   setBusy(true);
@@ -216,7 +217,7 @@ function submitAsk() { const v = $('ask').value.trim(); if (v) start('ask', v); 
 function onChunk(t) { st.buf += t; $('out').className = ''; $('out').textContent = clean(st.buf); $('out').scrollTop = 1e9; $('status').textContent = 'Piszę…'; }
 function finish(ok, msg) {
   setBusy(false); $('status').classList.remove('shimmer');
-  $('retry').disabled = false; $('copy').disabled = !ok; $('sendRes').disabled = !ok; $('replace').disabled = !ok; $('cal').disabled = !ok;
+  $('retry').disabled = false; $('copy').disabled = !ok; $('sendRes').disabled = !ok; $('replace').disabled = !ok; $('cal').disabled = !ok; $('note').disabled = !ok;
   if (!ok) { $('status').textContent = 'Coś poszło nie tak'; $('out').className = 'err'; $('out').textContent = msg; return; }
   $('status').textContent = 'Gotowe';
 }
@@ -265,6 +266,7 @@ $('retry').onclick = () => st.last && start(st.last.action, st.last.instruction)
 $('copy').onclick = () => { window.api.copy(clean(st.buf)); $('copy').textContent = 'Skopiowano ✓'; };
 $('sendRes').onclick = () => openSend(clean(st.buf), 'result');
 $('replace').onclick = () => window.api.replace(clean(st.buf));
+$('note').onclick = async () => { const r = await window.api.saveNote(clean(st.buf)); $('note').textContent = r.ok ? 'Zapisano w Notatkach ✓' : (r.msg || 'Nie udało się'); };
 $('cal').onclick = async () => { const r = await window.api.addCalendar(clean(st.buf)); $('cal').textContent = r.ok ? 'Dodano: ' + r.n + ' ✓' : (r.msg || 'Nie udało się'); };
 $('getKey').onclick = () => window.api.openConsole();
 async function saveKey() {

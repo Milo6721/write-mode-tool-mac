@@ -280,9 +280,9 @@ ipcMain.on('setLang', (e, l) => { cfg().lastLang = str(l, 40); saveCfg(); });
 /* Wyślij do: Wiadomości (iMessage/SMS) albo Mail. Domyślnie otwiera gotowy szkic i wysyłasz Enterem;
    z opcją "Wysyłaj wiadomości od razu" idzie bez podglądu (tylko Wiadomości). */
 const notify = (body) => { try { new Notification({ title: 'Write Mode Tool', body }).show(); } catch (e) { /* powiadomienie opcjonalne */ } };
+const messagesScript = (svc, phone, text) => 'tell application "Messages"\nset s to 1st account whose service type = ' + svc + '\nsend "' + aq(text) + '" to participant "' + aq(phone) + '" of s\nend tell';
 async function messagesSend(phone, text) {
-  const script = (svc) => 'tell application "Messages"\nset s to 1st account whose service type = ' + svc + '\nsend "' + aq(text) + '" to participant "' + aq(phone) + '" of s\nend tell';
-  return (await osa(script('iMessage'))) !== null || (await osa(script('SMS'))) !== null;
+  return (await osa(messagesScript('iMessage', phone, text))) !== null || (await osa(messagesScript('SMS', phone, text))) !== null;
 }
 ipcMain.handle('sendTo', async (e, { contactId, channel, text }) => {
   const c = allContacts().find((x) => x.id === contactId);
@@ -374,6 +374,21 @@ function watchIncoming() {
   try { fs.watch(app.getPath('userData'), (ev, name) => { if (name === 'incoming.txt') { clearTimeout(incomingTimer); incomingTimer = setTimeout(readIncoming, 60); } }); } catch (e) { log('watch failed', e.message); }
 }
 
+/* ---------- Zapisz w Notatkach (aplikacja Notatki; pierwsza linia staje się tytułem) ---------- */
+const htmlEsc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function notesScript(text) {
+  const lines = String(text).replace(/\r/g, '').split('\n'), title = lines.find((l) => l.trim()) || 'Write Mode Tool';
+  const rest = lines.slice(lines.indexOf(title) + 1).map((l) => (l.trim() ? '<div>' + htmlEsc(l) + '</div>' : '<div><br></div>')).join('');
+  const body = '<h1>' + htmlEsc(title.slice(0, 120)) + '</h1>' + rest;
+  return 'tell application "Notes"\nset n to make new note with properties {body:"' + aq(body) + '"}\nactivate\nshow n\nend tell';
+}
+ipcMain.handle('saveNote', async (e, text) => {
+  text = String(text || '').slice(0, 50000); if (!text.trim()) return { ok: false, msg: 'Brak tekstu do zapisania.' };
+  const r = await osa(notesScript(text));
+  if (r === null) return { ok: false, msg: 'Nie udało się. Zezwól na sterowanie Notatkami (Prywatność i ochrona → Automatyzacja).' };
+  state.prev = null; log('saveNote ok'); return { ok: true };
+});
+
 /* ---------- Szukaj w internecie i Do kalendarza ---------- */
 ipcMain.on('search', (e, t) => {
   const q = String(t || '').replace(/\s+/g, ' ').trim().slice(0, 200); if (!q) return;
@@ -442,10 +457,50 @@ function buildTray() {
   tray.on('click', () => openPopup('select'));
 }
 
+/* ---------- test dymny (WT_SMOKE=1): sprawdza usługi, składnię skryptów AppleScript i okno; używany w GitHub Actions ---------- */
+function osaCompile(name, script, lang) {
+  return new Promise((res) => {
+    const out = path.join(os.tmpdir(), 'wmt-' + name + '.scpt');
+    execFile('osacompile', [...(lang ? ['-l', lang] : []), '-e', script, '-o', out], { timeout: 15000 }, (err, so, se) => res({ name, ok: !err, err: err ? String(se || err.message).slice(0, 300) : '' }));
+  });
+}
+function plutil(file) {
+  return new Promise((res) => execFile('plutil', ['-lint', file], (err, so, se) => res({ name: path.basename(path.dirname(path.dirname(file))) + '/' + path.basename(file), ok: !err, err: err ? String(so || se).slice(0, 200) : '' })));
+}
+async function smoke() {
+  const R = { checks: [] }, add = (c) => R.checks.push(...[].concat(c));
+  await sleep(1500);
+  add(await Promise.all([
+    osaCompile('notes', notesScript('Tytuł\nPierwsza linia z "cudzysłowem" i \\ ukośnikiem\n\nDruga')),
+    osaCompile('messages', messagesScript('iMessage', '+48600100200', 'Cześć "Ania"')),
+    osaCompile('paste', 'tell application id "com.apple.Notes" to activate'),
+    osaCompile('reminders', 'tell application "Reminders" to make new reminder with properties {name:"' + aq('Kup mleko "2%"') + '"}'),
+    osaCompile('contacts', "const C = Application('Contacts'); JSON.stringify({ n: C.people.name(), e: C.people.emails.value(), p: C.people.phones.value() })", 'JavaScript'),
+  ]));
+  const dir = path.join(os.homedir(), 'Library', 'Services');
+  for (const sv of SERVICES) for (const f of ['Info.plist', 'document.wflow']) {
+    const fp = path.join(dir, sv.name + '.workflow', 'Contents', f);
+    if (!fs.existsSync(fp)) add({ name: sv.name + '/' + f, ok: false, err: 'brak pliku' }); else add(await plutil(fp));
+  }
+  // przepływ z Usługi: zapisz incoming.txt tak jak skrypt i sprawdź, czy okno się otwiera z tekstem
+  const f = path.join(app.getPath('userData'), 'incoming.txt');
+  fs.writeFileSync(f, 'menu\ncom.apple.TextEdit\nHej, dzięki za szybką odpowiedź. Pogadajmy w czwartek o 10:30.');
+  await sleep(2500);
+  add({ name: 'service-flow: okno widoczne', ok: !!(win && win.isVisible()), err: '' });
+  add({ name: 'service-flow: tekst odebrany', ok: state.text.startsWith('Hej, dzięki'), err: 'text=' + state.text.slice(0, 40) });
+  await sleep(1500);
+  R.ok = R.checks.every((c) => c.ok);
+  const out = process.env.WT_SMOKE_OUT || path.join(os.tmpdir(), 'wmt-smoke.json');
+  fs.writeFileSync(out, JSON.stringify(R, null, 2)); console.log(JSON.stringify(R, null, 2));
+  if (process.env.WT_SMOKE_HOLD) await sleep(+process.env.WT_SMOKE_HOLD);
+  app.exit(R.ok ? 0 : 1);
+}
+
 app.on('second-instance', () => openPopup('select'));
 app.on('window-all-closed', (e) => e.preventDefault());
 app.on('will-quit', () => { globalShortcut.unregisterAll(); });
 app.whenReady().then(() => {
   if (app.dock) app.dock.hide();
   createWindow(); buildTray(); registerHotkey(); installServices(); watchIncoming(); loadAppleContacts().catch(() => {});
+  if (process.env.WT_SMOKE) smoke().catch((e) => { console.error('SMOKE CRASH', e); app.exit(2); });
 });

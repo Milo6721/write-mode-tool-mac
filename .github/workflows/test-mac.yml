@@ -1,0 +1,32 @@
+name: Test on macOS
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  smoke:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --no-audit --no-fund
+      - name: Run the app in smoke-test mode and take a screenshot
+        env:
+          WT_SMOKE: "1"
+          WT_SMOKE_HOLD: "3000"
+          WT_SMOKE_OUT: ${{ runner.temp }}/smoke.json
+          ANTHROPIC_API_KEY: sk-ant-api03-FAKEFAKEFAKEFAKEFAKEFAKE
+        run: |
+          mkdir -p shots
+          ( sleep 11; screencapture -x shots/popup.png || true ) &
+          npx electron . --no-sandbox || echo "electron exit code $?"
+          wait
+          cp "$RUNNER_TEMP/smoke.json" shots/smoke.json || true
+          cat shots/smoke.json || true
+          ls -la ~/Library/Services || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mac-smoke
+          path: shots/*
