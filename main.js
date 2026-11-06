@@ -750,7 +750,7 @@ async function smoke() {
     add({ name: 'home: okno widoczne', ok: !!(home && home.isVisible()), err: '' });
     for (const p of ['start', 'study', 'stats', 'people', 'settings']) { await run('go(' + JSON.stringify(p) + ')'); await sleep(1700); add({ name: 'home: ' + p, ok: await snap(home, 'home-' + p), err: '' }); }
     await run("go('study')"); await sleep(1500); await run("document.querySelector('#p-study [data-deck]').click()"); await sleep(1800); await snap(home, 'home-deck');
-    await run("document.querySelector('#acts .btn').click()"); await sleep(1500); await snap(home, 'home-card-front'); await run('flipCard()'); await sleep(1200); await snap(home, 'home-card-back');
+    await run("document.querySelector('#acts .btn').click()"); await sleep(1500); await snap(home, 'home-card-front'); await run('flipCard()'); await sleep(1200); await snap(home, 'home-card-back'); await run('endSession()'); await sleep(900);
     for (const p of ['chat', 'actions', 'perms']) { await run('go(' + JSON.stringify(p) + ')'); await sleep(1700); add({ name: 'home: ' + p, ok: await snap(home, 'home-' + p), err: '' }); }
     await run("go('settings')"); await sleep(2200); await snap(home, 'home-settings-update');
     add({ name: 'api: nowe funkcje', ok: (await run("['chatList','chatSend','updateCheck','permsStatus','actionsBuiltin','barAsk','bubbleTranslate','setHotkey'].every((k) => typeof window.api[k] === 'function') || (() => { throw new Error('brak funkcji w preload'); })()")) === 'ok', err: '' });
