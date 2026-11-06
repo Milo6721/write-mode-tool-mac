@@ -213,10 +213,10 @@ h3 { font-size: 15px; letter-spacing: -.01em; }
 body { animation: bodyIn .7s var(--ease) backwards; }
 @keyframes bodyIn { from { opacity: 0; transform: scale(.985); } }
 .aurora { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
-.aurora i { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .5; animation: aur 26s ease-in-out infinite alternate; }
-.aurora i:nth-child(1) { width: 420px; height: 420px; left: -80px; top: -60px; background: #6aa8ff; }
-.aurora i:nth-child(2) { width: 380px; height: 380px; right: -60px; top: 25%; background: #ff8fc2; animation-duration: 31s; animation-delay: -8s; }
-.aurora i:nth-child(3) { width: 440px; height: 440px; left: 30%; bottom: -160px; background: #7ae6b2; animation-duration: 35s; animation-delay: -15s; }
+.aurora i { position: absolute; border-radius: 50%; opacity: .5; background: radial-gradient(closest-side, var(--c), transparent 72%); animation: aur 26s ease-in-out infinite alternate; will-change: transform; }
+.aurora i:nth-child(1) { --c: #6aa8ff; width: 620px; height: 620px; left: -160px; top: -180px; }
+.aurora i:nth-child(2) { --c: #ff8fc2; width: 560px; height: 560px; right: -160px; top: 18%; animation-duration: 31s; animation-delay: -8s; }
+.aurora i:nth-child(3) { --c: #7ae6b2; width: 640px; height: 640px; left: 22%; bottom: -300px; animation-duration: 35s; animation-delay: -15s; }
 @keyframes aur { to { transform: translate(70px, 44px) scale(1.2); } }
 @media (prefers-color-scheme: dark) { .aurora i { opacity: .3; } }
 .topbar { position: relative; z-index: 1; }
