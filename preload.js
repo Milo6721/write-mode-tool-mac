@@ -49,3 +49,7 @@ contextBridge.exposeInMainWorld('api', {
   addCalendar: (t) => ipcRenderer.invoke('addCalendar', t),
   sendTo: (contactId, channel, text) => ipcRenderer.invoke('sendTo', { contactId, channel, text }),
 });
+
+/* diagnostyka: nieobsłużone błędy z kontekstu preload trafiają do konsoli okna (widać je w teście dymnym) */
+window.addEventListener('unhandledrejection', (e) => { console.error('PRELOAD-REJECTION ' + (e.reason && (e.reason.stack || e.reason.message || e.reason))); });
+window.addEventListener('error', (e) => { console.error('PRELOAD-ERROR ' + e.message + ' @' + e.filename + ':' + e.lineno); });
