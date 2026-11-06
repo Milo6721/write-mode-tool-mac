@@ -23,13 +23,13 @@
     view = 'list'; if (!items.length) { out.innerHTML = ''; return; }
     let html = '', last = '', i = 0;
     items.forEach((it, idx) => { if (it.sec !== last) { html += '<div class="sec">' + it.sec + '</div>'; last = it.sec; } html += '<div class="item ' + (it.cls || '') + (idx === sel ? ' sel' : '') + '" data-i="' + idx + '" style="--i:' + (i++) + '"><span class="ic">' + ico(it.icon) + '</span><div class="tx">' + esc(it.label) + '<small>' + esc(it.sub || '') + '</small></div><span class="rt">' + (idx === sel ? '↵' : '') + '</span></div>'; });
-    out.innerHTML = html; const s = out.querySelector('.sel'); if (s) s.scrollIntoView({ block: 'nearest' });
+    out.innerHTML = html; const s = out.querySelector('.sel'); if (s) { const t = s.offsetTop, h = s.offsetHeight; if (t < out.scrollTop + 4) out.scrollTop = Math.max(0, t - 34); else if (t + h > out.scrollTop + out.clientHeight) out.scrollTop = t + h - out.clientHeight + 8; }
     out.querySelectorAll('.item').forEach((el) => { el.onmouseenter = () => { sel = +el.dataset.i; out.querySelectorAll('.item').forEach((x) => { x.classList.toggle('sel', x === el); const r = x.querySelector('.rt'); r.textContent = x === el ? '↵' : ''; }); }; el.onclick = () => run(items[+el.dataset.i]); });
     fit();
   }
   function refresh() { items = build(q.value); sel = items.findIndex((x) => !x.ai); if (sel < 0) sel = Math.max(0, items.length - 1); paintList(); }
-  const fit = () => { if (B) B.barResize($('#content').scrollHeight + 28); };
-  new ResizeObserver(fit).observe($('#content'));
+  const fit = () => { if (B) B.barResize($('#inner').offsetHeight + 12 + 12 + 12 + 12 + 6); };
+  new ResizeObserver(fit).observe($('#inner'));
 
   function work(text) { view = 'busy'; document.body.classList.add('busy'); q.disabled = true; out.innerHTML = '<div class="work"><span class="dots"><i></i><i></i><i></i></span><span id="wt">' + esc(text) + '</span></div>'; }
   function showResult(r) {
