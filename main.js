@@ -34,6 +34,8 @@ const MODEL = () => process.env.WT_MODEL || cfg().model || 'claude-haiku-5-5';
 const QUALITY = new Set(['official', 'bizen', 'quiz', 'flashcards', 'tasks', 'calendar', 'precheck']); // akcje, w których opłaca się mocniejszy model
 const customQuality = (action) => { if (!String(action).startsWith('c:')) return false; const a = (cfg().actions || []).find((x) => x.id === String(action).slice(2)); return !!(a && a.quality); };
 const modelFor = (action) => ((QUALITY.has(action) || customQuality(action)) && !process.env.WT_MODEL ? 'claude-sonnet-5-5' : MODEL());
+process.on('uncaughtException', (e) => { try { fs.appendFileSync(path.join(app.getPath('userData'), 'log.txt'), new Date().toISOString() + ' UNCAUGHT ' + (e && e.stack) + String.fromCharCode(10)); } catch (x) { /* log opcjonalny */ } });
+process.on('unhandledRejection', (e) => { try { fs.appendFileSync(path.join(app.getPath('userData'), 'log.txt'), new Date().toISOString() + ' UNHANDLED ' + (e && (e.stack || e)) + String.fromCharCode(10)); } catch (x) { /* log opcjonalny */ } });
 function log(...a) { try { fs.appendFileSync(path.join(app.getPath('userData'), 'log.txt'), new Date().toISOString() + ' ' + a.join(' ') + '\n'); } catch (e) { /* log opcjonalny */ } }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -708,7 +710,8 @@ function plutil(file) {
   return new Promise((res) => execFile('plutil', ['-lint', file], (err, so, se) => res({ name: path.basename(path.dirname(path.dirname(file))) + '/' + path.basename(file), ok: !err, err: err ? String(so || se).slice(0, 200) : '' })));
 }
 async function smoke() {
-  const R = { checks: [] }, add = (c) => R.checks.push(...[].concat(c));
+  const R = { checks: [] }, add = (c) => R.checks.push(...[].concat(c)), popupLog = [];
+  win.webContents.on('console-message', (e, level, message, line, src) => popupLog.push(level + ' ' + message + ' @' + path.basename(String(src)) + ':' + line));
   await sleep(1500);
   add(await Promise.all([
     osaCompile('notes', notesScript('Tytuł\nPierwsza linia z "cudzysłowem" i \\ ukośnikiem\n\nDruga')),
@@ -751,6 +754,8 @@ async function smoke() {
     await bubbleApi.open(); await sleep(2500); add({ name: 'bubble: zrzut', ok: await snap(bubbleApi.window(), 'bubble'), err: '' }); bubbleApi.hide();
     add({ name: 'popup: zrzut', ok: await snap(win, 'popup'), err: '' });
     fs.writeFileSync(path.join(dir, 'console.txt'), consoleLog.join(String.fromCharCode(10)));
+    fs.writeFileSync(path.join(dir, 'popup-console.txt'), popupLog.join(String.fromCharCode(10)));
+    try { fs.copyFileSync(path.join(app.getPath('userData'), 'log.txt'), path.join(dir, 'log.txt')); } catch (e) { /* brak dziennika */ }
   }
   R.ok = R.checks.every((c) => c.ok);
   const out = process.env.WT_SMOKE_OUT || path.join(os.tmpdir(), 'wmt-smoke.json');
