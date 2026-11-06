@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'">
+<title>Tłumacz w locie</title>
+<link rel="stylesheet" href="frost.css">
+<link rel="stylesheet" href="bubble.css">
+</head>
+<body class="dark">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="b-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="b-copy" viewBox="0 0 24 24"><path d="M9 9h10v10H9zM5 15V5h10"/></symbol>
+  <symbol id="b-swap" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="b-replace" viewBox="0 0 24 24"><path d="M4 7h12l-3-3M20 17H8l3 3"/></symbol>
+  <symbol id="b-tr" viewBox="0 0 24 24"><path d="M4 5h8M8 3v2M6 5c0 4 2 7 5 9M12 5c-.5 3-3 7-7 9M13 20l4-9 4 9M14.5 17h5"/></symbol>
+  <symbol id="b-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+</svg>
+<div class="frost in" id="panel">
+  <div class="lens"></div><div class="tint"></div><div class="spec"></div><div class="rim"></div><div class="glow"></div>
+  <div id="content">
+    <div class="top"><span class="badge"><svg class="i"><use href="#b-tr"/></svg></span><b>Tłumacz</b><span class="arrow"><svg class="i"><use href="#b-swap"/></svg></span>
+      <button id="langBtn" class="langbtn"><span id="langName">angielski</span><svg class="i"><use href="#b-chev"/></svg></button><span class="grow"></span><button id="x" class="icon" title="Zamknij"><svg class="i"><use href="#b-x"/></svg></button></div>
+    <div id="src" class="src"></div>
+    <div id="res" class="res"></div>
+    <div class="acts"><button class="btn" id="copy"><svg class="i"><use href="#b-copy"/></svg>Kopiuj</button><button class="btn primary" id="rep"><svg class="i"><use href="#b-replace"/></svg>Zamień</button></div>
+    <div id="langs" class="langs" hidden></div>
+  </div>
+</div>
+<script src="frost.js"></script>
+<script src="bubble.js"></script>
+</body>
+</html>

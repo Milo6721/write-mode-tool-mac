@@ -1,6 +1,6 @@
 {
   "name": "write-mode-tool",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
   "description": "Write Tools dla macOS: zaznacz tekst, prawy przycisk (Usługi) lub skrót, wybierz akcję AI",
   "author": "Write Tools",
@@ -19,6 +19,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "lib/**",
       "renderer/**",
       "assets/**",
       "package.json"

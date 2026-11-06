@@ -6,7 +6,7 @@ const demo = location.search.includes('demo');
 const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ic = (n) => '<svg class="i"><use href="#i-' + n + '"/></svg>';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const ORDER = ['start', 'study', 'stats', 'people', 'settings'];
+const ORDER = ['start', 'chat', 'study', 'stats', 'actions', 'people', 'perms', 'settings'];
 const RENDER = {};
 let cur = '', busy = false, S = null, pendingDeck = null, ringId = 0, sess = null, curDeck = null;
 
@@ -95,6 +95,7 @@ RENDER.start = async (el) => {
   const due = L.decks.filter((d) => d.kind === 'cards').reduce((n, d) => n + d.due, 0); setBadge(due);
   const top = L.decks.slice(0, 3);
   el.innerHTML = '<header class="ph rise"><h1>' + greet() + '</h1><p>Zaznacz tekst w dowolnej aplikacji i naciśnij <kbd>' + esc(s.hotkeyLabel) + '</kbd> albo kliknij prawym przyciskiem i wybierz Usługi.</p></header>' +
+    (s.permsMissing ? '<div class="card glass hero rise" style="margin-bottom:14px;border-color:rgba(255,159,10,.55)"><div><h3>Brakuje zgód systemowych</h3><p>Bez nich wklejanie wyniku i efekt szkła nie zadziałają w pełni.</p></div><button class="btn primary" data-go="perms">Napraw</button></div>' : '') +
     '<div class="grid3">' +
     '<div class="card glass stat rise"><span class="si fire">' + ic('flame') + '</span><b data-count="' + L.streak + '">0</b><span>' + (L.streak === 1 ? 'dzień z rzędu' : 'dni z rzędu') + '</span></div>' +
     '<div class="card glass stat rise"><span class="si blue">' + ic('check') + '</span><b data-count="' + L.today.total + '">0</b><span>odpowiedzi dziś</span></div>' +
@@ -211,7 +212,7 @@ function confetti() {
 }
 document.addEventListener('keydown', (e) => {
   if (rec) return;
-  if ((e.metaKey || e.ctrlKey) && /^[1-5]$/.test(e.key)) { e.preventDefault(); go(ORDER[+e.key - 1]); return; }
+  if ((e.metaKey || e.ctrlKey) && /^[1-8]$/.test(e.key)) { e.preventDefault(); go(ORDER[+e.key - 1]); return; }
   if (!sess) return;
   if (e.key === 'Escape') { endSession(); return; }
   if (sess.kind === 'cards') { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flipCard(); } else if (['1', '2', '3'].includes(e.key)) gradeCard(+e.key - 1); }
@@ -248,52 +249,41 @@ RENDER.people = async (el) => {
   $$('[data-da]', el).forEach((b) => { b.onclick = async () => { await bridge.saveActions(acts.filter((x) => x.id !== b.dataset.da)); redo(); }; });
 };
 
-/* ---------- Ustawienia ---------- */
 let rec = false;
-function toAccel(e) {
-  const m = []; if (e.metaKey) m.push('Command'); if (e.ctrlKey) m.push('Control'); if (e.altKey) m.push('Alt'); if (e.shiftKey) m.push('Shift');
-  const c = e.code; let k = null;
-  if (/^Key[A-Z]$/.test(c)) k = c.slice(3); else if (/^Digit\d$/.test(c)) k = c.slice(5); else if (/^F\d{1,2}$/.test(c)) k = c; else if (c === 'Space') k = 'Space';
-  if (!k || (!m.length && !/^F\d/.test(k))) return null; return m.concat(k).join('+');
+
+/* ---------- aktualizacje, plakietki, animowane logo ---------- */
+window.UPD = null; let dismissedUpd = '';
+function setPermBadge(n) { const b = $('#permBadge'); b.hidden = !n; b.textContent = n; }
+function renderUpdate(u) {
+  window.UPD = u; const b = $('#upd'), badge = $('#updBadge');
+  const show = u && (u.state === 'available' || u.state === 'downloading' || u.state === 'installing');
+  badge.hidden = !(u && u.state === 'available');
+  if (!show || (u.state === 'available' && dismissedUpd === u.latest)) b.hidden = true;
+  else {
+    b.hidden = false;
+    b.innerHTML = '<span class="si blue">' + ic('download') + '</span><div><b>' + (u.state === 'available' ? 'Dostępna wersja ' + esc(u.latest) : u.state === 'downloading' ? 'Pobieram aktualizację… ' + (u.progress || 0) + '%' : 'Instaluję i uruchamiam ponownie…') + '</b>' +
+      (u.state === 'downloading' ? '<div class="bar2"><i style="width:' + (u.progress || 0) + '%"></i></div>' : '<small>' + esc(u.notes || 'Nowa wersja Write Tools') + '</small>') + '</div>' +
+      (u.state === 'available' ? '<button class="btn primary" data-b="go">' + (u.canInstall ? 'Zainstaluj' : 'Pobierz') + '</button><button class="icon" data-b="x" title="Później">' + ic('close') + '</button>' : '');
+    const go1 = $('[data-b="go"]', b), x = $('[data-b="x"]', b);
+    if (go1) go1.onclick = () => (u.canInstall ? bridge.updateInstall() : bridge.updatePage());
+    if (x) x.onclick = () => { dismissedUpd = u.latest; b.hidden = true; };
+  }
+  if (typeof paintUpdateRow === 'function') paintUpdateRow();
 }
-const KEYMAP = { Command: '⌘', Control: '⌃', Alt: '⌥', Shift: '⇧', Space: 'Spacja' };
-const keycaps = (acc) => acc.split('+').map((k) => '<kbd>' + esc(KEYMAP[k] || k) + '</kbd>').join('');
-const sw = (k, on) => '<button class="sw" role="switch" aria-checked="' + !!on + '" data-k="' + k + '"><i></i></button>';
-RENDER.settings = async (el) => {
-  const s = await bridge.settingsGet(); S = s; setHk(s.hotkeyLabel); const sv = s.services, fast = !s.model || s.model.includes('haiku');
-  el.innerHTML = '<header class="ph rise"><h1>Ustawienia</h1><p>Skróty, usługi z prawego przycisku i zachowanie aplikacji.</p></header>' +
-    '<div class="sec rise">Skrót klawiszowy</div><div class="card glass group rise"><div class="srow"><div class="st"><b>Skrót główny</b><span>Otwiera menu akcji dla zaznaczonego tekstu w dowolnej aplikacji</span></div><div class="ctl"><div class="keys" id="keys">' + keycaps(s.hotkey) + '<span class="hint">Naciśnij nowy skrót…</span></div><button class="btn" id="recBtn">Zmień</button></div></div>' +
-    '<div class="presets" id="presets">' + s.presets.map((p) => '<button class="chip" data-acc="' + esc(p.acc) + '">' + esc(p.label) + '</button>').join('') + '</div><div class="msg" id="hkMsg" style="padding-bottom:10px"></div></div>' +
-    '<div class="sec rise">Usługi w menu prawego przycisku</div><div class="card glass group rise">' +
-    [['menu', 'Write Tools', 'Pełne menu akcji'], ['lang', 'Przetłumacz', 'Od razu wybór języka'], ['chat', 'Wyślij w Wiadomościach', 'Wybór osoby z Kontaktów'], ['mail', 'Wyślij e-mailem', 'Szkic w aplikacji Mail']].map(([k, n, d]) => '<div class="srow"><div class="st"><b>' + n + '</b><span>' + d + '</span></div>' + sw('svc.' + k, sv[k]) + '</div>').join('') + '</div>' +
-    '<div class="sec rise">Zachowanie</div><div class="card glass group rise">' +
-    [['login', 'Uruchamiaj po zalogowaniu', 'Aplikacja startuje razem z komputerem', s.login], ['showHome', 'Pokaż to okno po uruchomieniu', 'Inaczej aplikacja startuje cicho w tle', s.showHome], ['tray', 'Ikona w pasku menu', 'Szybki dostęp bez otwierania okna', s.tray], ['autoSend', 'Wysyłaj wiadomości od razu', 'Bez podglądu szkicu. Uwaga: AI może się pomylić', s.autoSend]].map(([k, n, d, v]) => '<div class="srow"><div class="st"><b>' + n + '</b><span>' + d + '</span></div>' + sw(k, v) + '</div>').join('') + '</div>' +
-    '<div class="sec rise">Model AI</div><div class="card glass group rise"><div class="srow"><div class="st"><b>Jakość odpowiedzi</b><span>Szybki jest tańszy, dokładny lepiej pisze długie teksty</span></div><div class="seg" id="seg"><i style="transform:translateX(' + (fast ? 0 : 100) + '%)"></i><button data-m="" class="' + (fast ? 'on' : '') + '">Szybki</button><button data-m="claude-sonnet-5-5" class="' + (fast ? '' : 'on') + '">Dokładny</button></div></div></div>' +
-    '<div class="sec rise">Klucz API Anthropic</div><div class="card glass group rise"><div class="srow" style="padding-bottom:12px"><div class="st"><b>Klucz</b><span>Zapisany zaszyfrowany na tym komputerze</span></div><span class="pill ' + (s.hasKey ? 'ok' : 'no') + '" id="keyPill">' + (s.hasKey ? 'Zapisany' : 'Brak klucza') + '</span></div>' +
-    '<div class="keyin"><input id="keyIn" type="password" placeholder="sk-ant-…" spellcheck="false" autocomplete="off"><button class="btn primary" id="keySave">Zapisz</button><button class="btn" id="keyGet">Zdobądź klucz</button></div><div class="msg" id="keyMsg" style="padding-bottom:12px"></div></div>' +
-    '<p class="note rise" style="margin-top:18px">Write Tools ' + esc(s.version) + ' · projekt niezależny, nie jest produktem Apple Inc. ani Anthropic PBC.</p>';
-  $$('.sw', el).forEach((b) => { b.onclick = async () => { const on = b.getAttribute('aria-checked') !== 'true'; b.setAttribute('aria-checked', on); await bridge.settingsSet(b.dataset.k, on); }; });
-  $$('#seg button', el).forEach((b, i) => { b.onclick = async () => { $$('#seg button', el).forEach((x) => x.classList.toggle('on', x === b)); $('#seg i', el).style.transform = 'translateX(' + i * 100 + '%)'; await bridge.settingsSet('model', b.dataset.m); }; });
-  const setKeys = (acc, label) => { $('#keys', el).innerHTML = keycaps(acc) + '<span class="hint">Naciśnij nowy skrót…</span>'; setHk(label); $('#hkMsg', el).textContent = ''; };
-  const applyHk = async (acc) => {
-    const r = await bridge.setHotkey(acc), box = $('#keys', el);
-    if (r.ok) { S.hotkey = acc; setKeys(acc, r.label); $('#hkMsg', el).className = 'msg ok'; $('#hkMsg', el).textContent = 'Zapisano: ' + r.label; }
-    else { box.classList.remove('bad'); void box.offsetWidth; box.classList.add('bad'); $('#hkMsg', el).className = 'msg'; $('#hkMsg', el).textContent = 'Ten skrót jest zajęty przez system lub inną aplikację.'; }
-  };
-  $$('#presets .chip', el).forEach((b) => { b.onclick = () => applyHk(b.dataset.acc); });
-  $('#recBtn', el).onclick = () => {
-    if (rec) return; rec = true; const box = $('#keys', el), btn = $('#recBtn', el); box.classList.add('rec'); btn.textContent = 'Anuluj';
-    const stop = () => { rec = false; box.classList.remove('rec'); btn.textContent = 'Zmień'; window.removeEventListener('keydown', onKey, true); btn.onclick = start; };
-    const onKey = (e) => { e.preventDefault(); e.stopPropagation(); if (e.key === 'Escape') return stop(); if (['Meta', 'Control', 'Alt', 'Shift'].includes(e.key)) return; const acc = toAccel(e); if (!acc) { box.classList.remove('bad'); void box.offsetWidth; box.classList.add('bad'); $('#hkMsg', el).className = 'msg'; $('#hkMsg', el).textContent = 'Dodaj klawisz ⌘, ⌃ lub ⌥ i literę.'; return; } stop(); applyHk(acc); };
-    const start = $('#recBtn', el).onclick; btn.onclick = stop; window.addEventListener('keydown', onKey, true);
-  };
-  $('#keyGet', el).onclick = () => bridge.openConsole();
-  $('#keySave', el).onclick = async () => {
-    const v = $('#keyIn', el).value.trim(); if (!v) return; const r = await bridge.setKey(v), m = $('#keyMsg', el);
-    if (r === 'ok' || r === true) { m.className = 'msg ok'; m.textContent = 'Klucz zapisany.'; $('#keyIn', el).value = ''; const p = $('#keyPill', el); p.className = 'pill ok'; p.textContent = 'Zapisany'; }
-    else { m.className = 'msg'; m.textContent = r === 'bad' ? 'To nie wygląda na klucz API. Zaczyna się od sk-ant- i nie ma spacji ani polskich liter.' : 'Szyfrowanie systemowe jest niedostępne.'; }
-  };
-};
+['dragover', 'drop'].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault()));
+let logoTaps = 0, logoT = 0;
+function logoBurst() {
+  const L = $('#logo'); L.classList.remove('tap'); void L.offsetWidth; L.classList.add('tap');
+  const cols = ['#ff4fd8', '#6a5cff', '#2fd5ff', '#5df2c0', '#ffe45c'];
+  for (let i = 0; i < 14; i++) {
+    const sp = document.createElement('i'); sp.className = 'spk'; const a = (i / 14) * Math.PI * 2 + Math.random() * .4; const d = 38 + Math.random() * 34;
+    sp.style.cssText = '--dx:' + (Math.cos(a) * d).toFixed(1) + 'px;--dy:' + (Math.sin(a) * d).toFixed(1) + 'px;--c:' + cols[i % cols.length] + ';animation-delay:' + Math.round(Math.random() * 90) + 'ms'; L.append(sp); setTimeout(() => sp.remove(), 1300);
+  }
+  const r = document.createElement('i'); r.className = 'logoRing'; L.append(r); setTimeout(() => r.remove(), 1000);
+  const now = Date.now(); logoTaps = now - logoT < 900 ? logoTaps + 1 : 1; logoT = now;
+  if (logoTaps >= 5) { logoTaps = 0; const ap = $('#app'); ap.classList.remove('rainbow'); void ap.offsetWidth; ap.classList.add('rainbow'); setTimeout(() => ap.classList.remove('rainbow'), 4200); }
+}
+$('#logo').onclick = logoBurst;
 
 /* ---------- start ---------- */
 $$('#nav button').forEach((b) => { b.onclick = () => go(b.dataset.p); });
@@ -303,10 +293,12 @@ function boot() {
   const first = (location.search.match(/page=(\w+)/) || [])[1] || 'start';
   go(first).then(async () => {
     bridge.settingsGet().then((s) => { S = s; setHk(s.hotkeyLabel); $('#ver').textContent = 'wersja ' + s.version; });
+    bridge.updateGet().then(renderUpdate); bridge.permsStatus().then((p) => setPermBadge((p.accessibility !== 'granted' ? 1 : 0) + (p.screen !== 'granted' ? 1 : 0)));
     bridge.studyList().then((L) => setBadge(L.decks.filter((d) => d.kind === 'cards').reduce((n, d) => n + d.due, 0)));
     if (demo) { const q = location.search; const m = q.match(/open=(\w+)/); if (m) { await sleep(900); pendingDeck = null; if (m[1] === 'deck') { await openDeck('d1'); } else if (m[1] === 'cards' || m[1] === 'quiz') { await openDeck(m[1] === 'cards' ? 'd1' : 'd2'); await sleep(900); startSession(m[1], curDeck.items); } } }
   });
-  if (window.api && window.api.onHome) window.api.onHome((p) => { if (ORDER.includes(p)) { busy = false; go(p); } });
+  if (window.api && window.api.onHome) window.api.onHome((p) => { if (typeof p === 'string' && p.startsWith('deck:')) { pendingDeck = p.slice(5); busy = false; go('study'); return; } if (ORDER.includes(p)) { busy = false; go(p); } });
+  if (window.api && window.api.onUpdate) window.api.onUpdate(renderUpdate);
 }
 if (demo) {
   const stu = { decks: [
@@ -318,11 +310,20 @@ if (demo) {
       { id: 'q2', q: 'Który gaz rośliny pobierają podczas fotosyntezy?', opts: ['Tlen', 'Azot', 'Dwutlenek węgla', 'Wodór'], correct: 2, why: 'CO₂ jest źródłem węgla do budowy cukrów.', right: 3, wrong: 0 }] },
     { id: 'd3', name: 'Angielski: czasowniki frazowe', kind: 'cards', last: Date.now() - 2e8, history: [], items: [{ id: 'a', q: 'give up', a: 'poddać się', box: 0, due: 0, right: 0, wrong: 0 }, { id: 'b', q: 'look after', a: 'opiekować się', box: 0, due: 0, right: 0, wrong: 0 }] }] };
   const infoOf = (d) => { const c = d.kind === 'cards', seen = d.items.reduce((x, i) => x + i.right + i.wrong, 0), r = d.items.reduce((x, i) => x + i.right, 0); return { id: d.id, name: d.name, kind: d.kind, count: d.items.length, last: d.last, sessions: d.history.length, mastered: c ? d.items.filter((i) => i.box >= 4).length : d.items.filter((i) => i.right > i.wrong).length, due: c ? d.items.filter((i) => i.due <= Date.now()).length : d.items.length, accuracy: seen ? Math.round(r * 100 / seen) : null }; };
-  const cfg = { hotkey: 'Command+Alt+M', hotkeyLabel: '⌘⌥M', presets: [{ label: '⌘⌥M', acc: 'Command+Alt+M' }, { label: '⌘⌥W', acc: 'Command+Alt+W' }, { label: '⌥⇧Spacja', acc: 'Alt+Shift+Space' }, { label: 'F7', acc: 'F7' }], model: '', login: true, showHome: true, tray: true, autoSend: false, services: { menu: true, lang: true, chat: true, mail: false }, hasKey: true, version: '1.1.0' };
+  const cfg = { hotkey: 'Command+Alt+M', hotkeyLabel: '⌘⌥M', hotkeys: { main: { acc: 'Command+Alt+M', label: '⌘⌥M' }, bar: { acc: 'Command+Alt+K', label: '⌘⌥K' }, trans: { acc: 'Command+Alt+T', label: '⌘⌥T' } }, permsMissing: 1, update: null, presets: [{ label: '⌘⌥M', acc: 'Command+Alt+M' }, { label: '⌘⌥W', acc: 'Command+Alt+W' }, { label: '⌥⇧Spacja', acc: 'Alt+Shift+Space' }, { label: 'F7', acc: 'F7' }], model: '', login: true, showHome: true, tray: true, autoSend: false, services: { menu: true, lang: true, chat: true, mail: false }, hasKey: true, version: '1.3.0' };
   const tones = [{ name: 'Anna Kowalska', tone: 'Na „ty”, luźno' }, { name: 'Dyrektor Nowak', tone: 'Na „pan”, formalnie' }]; let actions = [{ id: 'x', name: 'Zgłoszenie do Jiry', prompt: 'Zamień tekst w zgłoszenie do Jiry z tytułem i krokami.' }];
-  window.api = { studyList: async () => ({ decks: stu.decks.map(infoOf), today: { right: 14, total: 18 }, streak: 4 }), studyGet: async (id) => { const d = stu.decks.find((x) => x.id === id); return d ? { ...d, info: infoOf(d) } : null; }, studyReview: async () => true, studySession: async (id, r, t) => { const d = stu.decks.find((x) => x.id === id); if (d) d.history.push({ right: r, total: t }); return true; }, studyDelete: async () => true,
+  let chatCb = null, updCb = null, actCb = null; const upd = { state: 'available', current: '1.2.0', latest: '1.3.0', notes: 'Czat z plikami, edytor akcji, pasek poleceń i tłumacz w locie.', page: '', progress: 0, canInstall: true, checkedAt: Date.now() };
+  const chats = [{ id: 'c1', title: 'Plan nauki na tydzień', updated: Date.now() - 36e5, messages: [{ role: 'user', text: 'Zrób mi plan nauki angielskiego na tydzień', ts: 1, files: [] }, { role: 'assistant', text: 'Oto plan:\n\n**Poniedziałek** – słówka (20 min)\n- powtórz fiszki\n- krótkie czytanie\n\nPrzykład w kodzie:\n```js\nconsole.log("hello");\n```', ts: 2 }] }, { id: 'c2', title: 'Streszczenie umowy najmu', updated: Date.now() - 9e7, messages: [{ role: 'user', text: 'Streść umowę', ts: 1, files: [{ name: 'umowa.pdf', kind: 'pdf', size: 482113 }] }, { role: 'assistant', text: 'Najważniejsze: kaucja 2 miesiące, wypowiedzenie 1 miesiąc.', ts: 2 }] }];
+  const DEMO2 = { chatList: async () => chats.map((c) => ({ id: c.id, title: c.title, updated: c.updated, count: c.messages.length })), chatGet: async (id) => chats.find((c) => c.id === id) || null,
+    chatSend: async (p) => { const id = p.chatId || 'cn'; setTimeout(() => { chatCb && chatCb({ type: 'start', chatId: id }); const words = 'To jest przykładowa odpowiedź AI. Działa strumieniowo, **słowo po słowie**, z listą:\n- pierwszy punkt\n- drugi punkt'.split(' '); let i = 0; const t = setInterval(() => { if (i >= words.length) { clearInterval(t); chatCb && chatCb({ type: 'done', chatId: id }); return; } chatCb && chatCb({ type: 'chunk', chatId: id, text: (i ? ' ' : '') + words[i++] }); }, 90); }, 300); return { ok: true, chatId: id, title: 'Nowa rozmowa', files: [] }; },
+    chatDelete: async () => true, chatRename: async () => true, chatStop() {}, onChat: (cb) => { chatCb = cb; }, onChatPrefill() {},
+    updateGet: async () => upd, updateCheck: async () => { updCb && updCb(upd); return upd; }, updateInstall: async () => ({ ok: true }), updateSkip: async () => true, updatePage() {}, onUpdate: (cb) => { updCb = cb; },
+    permsStatus: async () => ({ accessibility: 'granted', screen: 'denied', tests: { events: { state: 'granted' }, messages: { state: 'denied' }, notes: { state: 'granted' } } }), permsTest: async () => ({ state: 'granted' }), permsRequest: async () => ({}), permsOpen() {},
+    actionsBuiltin: async () => [{ id: 'slack', label: 'Wersja na Slack lub Teams', prompt: 'Rewrite the text as a short, natural chat message for Slack or Microsoft Teams: friendly and direct, no formal greeting.' }, { id: 'commit', label: 'Komunikat commita', prompt: 'Write a Git commit message in the Conventional Commits style.' }, { id: 'translate', label: 'Przetłumacz', prompt: 'Translate the text into English naturally.' }],
+    actionsTest: async () => { setTimeout(() => { const w = 'Tytuł: Błąd logowania\nOpis: Użytkownik nie może się zalogować.'.split(' '); let i = 0; const t = setInterval(() => { if (i >= w.length) { clearInterval(t); actCb && actCb({ type: 'done' }); return; } actCb && actCb({ type: 'chunk', text: (i ? ' ' : '') + w[i++] }); }, 120); }, 200); return { ok: true }; }, actionsStop() {}, actionsExport: async () => ({ ok: true, count: 1 }), actionsImport: async () => ({ ok: true, added: 0, actions }), onActions: (cb) => { actCb = cb; } };
+  window.api = { ...DEMO2, studyList: async () => ({ decks: stu.decks.map(infoOf), today: { right: 14, total: 18 }, streak: 4 }), studyGet: async (id) => { const d = stu.decks.find((x) => x.id === id); return d ? { ...d, info: infoOf(d) } : null; }, studyReview: async () => true, studySession: async (id, r, t) => { const d = stu.decks.find((x) => x.id === id); if (d) d.history.push({ right: r, total: t }); return true; }, studyDelete: async () => true,
     studyOverview: async () => ({ days: Array.from({ length: 14 }, (_, i) => { const d = new Date(Date.now() - (13 - i) * 864e5), t = [0, 6, 12, 9, 15, 4, 0, 18, 22, 10, 14, 20, 17, 18][i]; return { d: d.toISOString().slice(0, 10), total: t, right: Math.round(t * (0.55 + i * 0.03)) }; }), answers: 187, accuracy: 78, items: 12, mastered: 5, streak: 4, decks: stu.decks.map((d) => ({ name: d.name, pct: Math.round(infoOf(d).mastered * 100 / d.items.length) })), hardest: [{ q: 'Co to jest jednostka astronomiczna?', wrong: 3, deck: 'Układ Słoneczny' }, { q: 'Co powstaje oprócz glukozy?', wrong: 2, deck: 'Quiz: Fotosynteza' }] }),
     homeData: async () => ({ tones, actions }), saveTone: async (n, t) => { const i = tones.findIndex((x) => x.name.toLowerCase() === n.toLowerCase()); if (i >= 0) tones.splice(i, 1); if (t) tones.push({ name: n, tone: t }); return tones; }, saveActions: async (l) => { actions = l.map((a, i) => ({ ...a, id: a.id || 'n' + i })); return actions; },
     settingsGet: async () => cfg, settingsSet: async (k, v) => { if (k.startsWith('svc.')) cfg.services[k.slice(4)] = v; else cfg[k] = v; return true; }, setHotkey: async (acc) => ({ ok: !acc.includes('F7'), label: acc.split('+').map((k) => ({ Command: '⌘', Control: '⌃', Alt: '⌥', Shift: '⇧', Space: 'Spacja' }[k] || k)).join('') }), setKey: async () => 'ok', openConsole() {} };
 }
-boot();
+window.addEventListener("load", boot);

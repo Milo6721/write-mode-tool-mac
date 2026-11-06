@@ -64,9 +64,10 @@ const I = {
   check: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12.5l2.7 2.7L16 9.5',
   precheck: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12.5l2.7 2.7L16 9.5',
   edit: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4',
+  explain: 'M8 8l-4 4 4 4M16 8l4 4-4 4M14 5l-4 14',
   plus: 'M12 5v14M5 12h14',
 };
-const LABEL = { translate: 'Przetłumacz', send: 'Wyślij do…', slack: 'Wersja na Slack lub Teams', refuse: 'Uprzejma odmowa', official: 'Pismo urzędowe', bizen: 'Angielski biznesowy', headings: 'Nagłówki i akapity', tasks: 'Notatki na zadania', commit: 'Komunikat commita', flashcards: 'Fiszki', quiz: 'Quiz z tekstu', hardwords: 'Trudne słowa', reply: 'Odpowiedz…', calendar: 'Do kalendarza', web: 'Szukaj w internecie', precheck: 'Sprawdź przed wysłaniem' };
+const LABEL = { translate: 'Przetłumacz', send: 'Wyślij do…', slack: 'Wersja na Slack lub Teams', refuse: 'Uprzejma odmowa', official: 'Pismo urzędowe', bizen: 'Angielski biznesowy', headings: 'Nagłówki i akapity', tasks: 'Notatki na zadania', commit: 'Komunikat commita', flashcards: 'Fiszki', quiz: 'Quiz z tekstu', hardwords: 'Trudne słowa', reply: 'Odpowiedz…', calendar: 'Do kalendarza', web: 'Szukaj w internecie', precheck: 'Sprawdź przed wysłaniem', explain: 'Wyjaśnij kod' };
 /* Układ w stylu Apple Writing Tools: duże kafelki, potem listy z grupami */
 const LAYOUT = [
   ['tile', 'g2', null, ['translate', 'send']],
@@ -119,6 +120,12 @@ function renderRows() {
     box.append(h('div', 'nosel', 'Nie zaznaczono tekstu. Napisz powyżej, co mam stworzyć, albo zaznacz tekst i naciśnij skrót jeszcze raz.'));
     box.append(chipButton('mine', 'Własne akcje…', openActions)); return;
   }
+  if (st.ctx && st.ctx.picks && st.ctx.picks.length) {
+    box.append(h('div', 'lab', 'Podpowiedzi dla: ' + st.ctx.name));
+    const cw = h('div', 'list ctxlist');
+    for (const a of st.ctx.picks) { const b = h('button', 'row a-' + a); b.innerHTML = '<i class="ico">' + svg(a) + '</i><span>' + (LABEL[a] || a) + '</span>' + (st.ctx.learned && st.ctx.learned.includes(a) ? '<span class="sub2">często używasz</span>' : ''); b.onclick = () => onMenuAction(a); cw.append(b); }
+    box.append(cw);
+  }
   for (const [kind, cls, title, items] of LAYOUT) {
     if (title) box.append(h('div', 'lab', title));
     const wrap = h('div', kind === 'list' ? 'list' : 'grid ' + cls);
@@ -130,7 +137,7 @@ function renderRows() {
   if (st.data.actions.length) {
     box.append(h('div', 'lab', 'Moje akcje'));
     const wrap = h('div', 'list');
-    for (const a of st.data.actions) { const b = h('button', 'row'); b.innerHTML = svg('mine'); b.append(h('span', null, a.name)); b.onclick = () => start('c:' + a.id, ''); wrap.append(b); }
+    for (const a of st.data.actions) { const b = h('button', 'row'); b.innerHTML = svg(I[a.icon] ? a.icon : 'mine'); b.append(h('span', null, a.name)); b.onclick = () => start('c:' + a.id, ''); wrap.append(b); }
     box.append(wrap);
   }
   box.append(chipButton('mine', 'Własne akcje…', openActions));
@@ -510,6 +517,7 @@ function onMoved(p) {
   } catch (e) { /* próbkowanie jasności jest opcjonalne */ }
 }
 async function onOpen(d) {
+  st.ctx = d.ctx || null;
   setBusy(false); st.text = d.text || ''; st.hasSel = !!st.text.trim();
   document.body.classList.remove('dark', 'light', 'closing'); document.body.classList.add(d.bg && !d.bg.dark ? 'light' : 'dark');
   setLens(d.bg);
@@ -540,6 +548,7 @@ $('ask').addEventListener('input', () => $('askWrap').classList.toggle('has', !!
 $('ask').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitAsk(); });
 $('askGo').onclick = submitAsk;
 $('close').onclick = () => window.api && window.api.close();
+$('orb').onclick = () => { const o = $('orb'); o.classList.remove('tap'); void o.offsetWidth; o.classList.add('tap'); };
 $('back').onclick = () => { if (!demo) window.api.cancel(); setBusy(false); toMenu(); };
 $('langBack').onclick = toMenu; $('actBack').onclick = () => { renderRows(); toMenu(); };
 $('sendBack').onclick = () => { if (st.sendFrom === 'result') show('result'); else toMenu(); };

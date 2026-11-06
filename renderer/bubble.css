@@ -1,0 +1,28 @@
+#content { position: absolute; inset: 0; padding: 14px 16px 14px; display: flex; flex-direction: column; gap: 10px; }
+.top { display: flex; align-items: center; gap: 8px; height: 34px; flex: none; }
+.top b { font-size: 14.5px; }
+.badge { width: 26px; height: 26px; border-radius: 9px; display: grid; place-items: center; color: #fff; background: linear-gradient(160deg, #c68bff, #7a5cff); box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 4px 10px rgba(0,0,0,.2); animation: pop .5s var(--spring); }
+.badge svg { width: 15px; height: 15px; }
+.arrow { opacity: .55; display: grid; }
+.grow { flex: 1; }
+.langbtn { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 8px 0 12px; border: 0; border-radius: 999px; cursor: pointer; font-weight: 600; font-size: 13px; background: var(--field); box-shadow: inset 0 0 0 1px var(--line); transition: transform .25s var(--spring), background .2s; }
+.langbtn:hover { background: var(--hover); transform: translateY(-1px); } .langbtn svg { width: 14px; height: 14px; }
+.icon { width: 28px; height: 28px; border: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer; background: transparent; transition: background .2s, transform .25s var(--spring); }
+.icon:hover { background: var(--hover); transform: scale(1.1); } .icon:active { transform: scale(.9); }
+.src { flex: none; max-height: 50px; overflow: hidden; padding: 0 4px; font-size: 12.5px; color: var(--fg2); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.res { flex: 1; min-height: 0; overflow: auto; padding: 12px 14px; border-radius: 18px; background: var(--field); box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 rgba(255,255,255,.2); font-size: 15.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; scrollbar-width: thin; -webkit-user-select: text; user-select: text; }
+.res.err { color: #ff8a80; } body.light .res.err { color: #c62828; }
+.res.empty { color: var(--fg2); display: grid; place-items: center; text-align: center; font-size: 13.5px; }
+.res.live::after { content: ''; display: inline-block; width: 7px; height: 1.05em; margin-left: 2px; vertical-align: text-bottom; border-radius: 2px; background: linear-gradient(180deg, #ff4fd8, #6a5cff, #2fd5ff); animation: caret .9s steps(2) infinite; }
+@keyframes caret { 50% { opacity: 0; } }
+.res .dots { display: inline-flex; gap: 5px; } .res .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--fg2); animation: dot 1.1s ease-in-out infinite; } .res .dots i:nth-child(2) { animation-delay: .15s; } .res .dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes dot { 0%, 60%, 100% { transform: translateY(0); opacity: .4; } 30% { transform: translateY(-6px); opacity: 1; } }
+.acts { display: flex; gap: 8px; flex: none; }
+.btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 36px; border: 0; border-radius: 999px; cursor: pointer; font-weight: 600; background: var(--field); box-shadow: inset 0 0 0 1px var(--line); transition: transform .25s var(--spring), background .2s, opacity .2s; }
+.btn:hover { background: var(--hover); transform: translateY(-1px); } .btn:active { transform: scale(.95); } .btn:disabled { opacity: .4; pointer-events: none; }
+.btn.primary { color: #fff; background: linear-gradient(180deg, #3d9bff, #0a76f0); box-shadow: 0 6px 16px rgba(10,132,255,.4), inset 0 1px 0 rgba(255,255,255,.5); }
+.langs { position: absolute; left: 14px; right: 14px; top: 56px; bottom: 14px; z-index: 5; overflow: auto; padding: 8px; border-radius: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; align-content: start; background: rgba(20,22,34,.82); backdrop-filter: blur(24px); box-shadow: 0 16px 40px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.25); animation: langIn .35s var(--ease) backwards; scrollbar-width: none; }
+body.light .langs { background: rgba(255,255,255,.88); }
+@keyframes langIn { from { opacity: 0; transform: translateY(-8px) scale(.97); } }
+.langs button { padding: 9px 12px; border: 0; border-radius: 12px; background: transparent; cursor: pointer; text-align: left; font-weight: 500; animation: rise .3s var(--ease) backwards; animation-delay: calc(var(--i) * 14ms); transition: background .15s; }
+.langs button:hover { background: var(--hover); } .langs button.on { color: #fff; background: linear-gradient(180deg, #3d9bff, #0a76f0); }

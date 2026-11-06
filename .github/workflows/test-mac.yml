@@ -17,6 +17,9 @@ jobs:
           WT_SMOKE: "1"
           WT_SMOKE_SHOTS: ${{ runner.temp }}/shots
           WT_SMOKE_OUT: ${{ runner.temp }}/shots/smoke.json
+          WT_FAKE_UPDATE: "9.9.9"
+          WT_SMOKE_TEXT: "Hej, dzięki za szybką odpowiedź. Pogadajmy w czwartek o 10:30."
+          WT_SMOKE_APP: com.apple.mail
           ANTHROPIC_API_KEY: sk-ant-api03-FAKEFAKEFAKEFAKEFAKEFAKE
         run: |
           mkdir -p "$RUNNER_TEMP/shots"
