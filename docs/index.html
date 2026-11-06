@@ -126,6 +126,10 @@ footer { padding:48px 20px 64px; color:var(--muted); font-size:13px; text-align:
   <symbol id="slack" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4zM8 9h8M8 12h5"/></symbol>
   <symbol id="mine" viewBox="0 0 24 24"><path d="M12 3l2.4 5 5.6.8-4 4 1 5.7-5-2.7-5 2.7 1-5.7-4-4 5.6-.8z"/></symbol>
   <symbol id="flashcards" viewBox="0 0 24 24"><path d="M4 8h13v11H4zM7 5h13v11"/></symbol>
+  <symbol id="bolt" viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></symbol>
+  <symbol id="shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6zM9 12l2 2 4-4"/></symbol>
+  <symbol id="edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></symbol>
+  <symbol id="refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></symbol>
   <symbol id="check" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12.5l2.7 2.7L16 9.5"/></symbol>
   <symbol id="apple" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14"/></symbol>
 </svg>
@@ -190,6 +194,13 @@ footer { padding:48px 20px 64px; color:var(--muted); font-size:13px; text-align:
     <div class="card glass"><div class="badge c3"><svg class="i"><use href="#check"/></svg></div><h3>Sprawdź przed wysłaniem</h3><p>Zaznaczasz swój tekst, a aplikacja mówi, czy zabrzmi niegrzecznie albo czego w nim brakuje, i proponuje poprawioną wersję.</p></div>
     <div class="card glass"><div class="badge c2"><svg class="i"><use href="#reply"/></svg></div><h3>Ton dla każdego</h3><p>Zapisujesz, jak piszesz do danej osoby (na ty, formalnie, z emoji), a odpowiedzi do niej są w tym stylu.</p></div>
     <div class="card glass"><div class="badge c6"><svg class="i"><use href="#check"/></svg></div><h3>Zwykła aplikacja z oknem</h3><p>Ikona w Docku i okno z panelem bocznym: Start, fiszki i quizy, statystyki, personalizacja oraz ustawienia ze skrótami i przełącznikami.</p></div>
+    <div class="card glass"><div class="badge c4"><svg class="i"><use href="#chat"/></svg></div><h3>Czat z plikami i historią</h3><p>Rozmawiasz z AI w oknie aplikacji. Przeciągasz zdjęcia, PDF-y i pliki tekstowe, a rozmowy zapisują się w historii.</p></div>
+    <div class="card glass"><div class="badge c5"><svg class="i"><use href="#bolt"/></svg></div><h3>Pasek poleceń</h3><p>Szklany pasek jak Spotlight, ale tylko dla Write Tools. Piszesz „fiszki z tego” albo „otwórz statystyki”, a AI robi to w aplikacji.</p></div>
+    <div class="card glass"><div class="badge c6"><svg class="i"><use href="#translate"/></svg></div><h3>Tłumacz w locie</h3><p>Zaznaczasz tekst, naciskasz skrót i obok kursora pojawia się szklana bańka z tłumaczeniem. Możesz od razu zamienić tekst.</p></div>
+    <div class="card glass"><div class="badge c1"><svg class="i"><use href="#mine"/></svg></div><h3>Podpowiedzi zależne od programu</h3><p>Aplikacja widzi, gdzie jesteś (Mail, Wiadomości, Xcode, przeglądarka) i na górze menu pokazuje to, co tam pasuje. Uczy się też, po co sięgasz najczęściej.</p></div>
+    <div class="card glass"><div class="badge c8"><svg class="i"><use href="#edit"/></svg></div><h3>Edytor akcji</h3><p>Własne polecenia z nazwą i ikoną, test na przykładowym tekście, kopiowanie wbudowanych akcji oraz import i eksport.</p></div>
+    <div class="card glass"><div class="badge c3"><svg class="i"><use href="#shield"/></svg></div><h3>Zgody systemowe</h3><p>Strona, która na żywo pokazuje, czego brakuje (Dostępność, Nagrywanie ekranu, Automatyzacja), i naprawia to jednym kliknięciem.</p></div>
+    <div class="card glass"><div class="badge c2"><svg class="i"><use href="#refresh"/></svg></div><h3>Aktualizacje</h3><p>Aplikacja sama pokazuje, że jest nowa wersja. Klikasz, pobiera ją, podmienia się i uruchamia ponownie.</p></div>
   </div>
 </section>
 
@@ -199,7 +210,7 @@ footer { padding:48px 20px 64px; color:var(--muted); font-size:13px; text-align:
   <ol class="steps">
     <li class="glass"><b class="n">1</b><div>Pobierz plik <code>.dmg</code>, otwórz go i przeciągnij <b>Write Tools</b> do folderu Programy.</div></li>
     <li class="glass"><b class="n">2</b><div>Kliknij aplikację <b>prawym przyciskiem → Otwórz</b> i potwierdź. Jeśli to nie pomoże, wpisz w Terminalu: <code>xattr -cr "/Applications/Write Tools.app"</code></div></li>
-    <li class="glass"><b class="n">3</b><div>Zezwól na <b>Dostępność</b> (wklejanie wyniku), <b>Automatyzację</b> i <b>Kontakty</b>, gdy system zapyta.</div></li>
+    <li class="glass"><b class="n">3</b><div>Otwórz stronę <b>Zgody systemowe</b> w aplikacji. Pokaże, czego brakuje (<b>Dostępność</b>, <b>Nagrywanie ekranu</b>, <b>Automatyzacja</b>), i otworzy właściwe ustawienia jednym kliknięciem.</div></li>
     <li class="glass"><b class="n">4</b><div>Wklej swój <b>klucz API Anthropic</b> (zdobędziesz go na console.anthropic.com) w oknie, które pojawi się przy pierwszym użyciu.</div></li>
     <li class="glass"><b class="n">5</b><div>Jeśli nie widzisz usług w menu prawego przycisku: Ustawienia systemowe → Klawiatura → Skróty klawiszowe → Usługi → Tekst i zaznacz Write Tools.</div></li>
   </ol>
