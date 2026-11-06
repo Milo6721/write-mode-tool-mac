@@ -137,9 +137,15 @@ async function grabSelection() {
 }
 
 /* ---------- zrzut tła pod oknem (do efektu Liquid Glass) ---------- */
+// Adres danych dłuższy niż ok. 2 MB jest odrzucany przez przeglądarkę, więc zrzut musi być mały (szkło i tak go rozmywa)
+function shotData(img) {
+  let b64 = img.toJPEG(60).toString('base64');
+  if (b64.length > 1400000) { const sz = img.getSize(); b64 = img.resize({ width: Math.max(640, Math.round(sz.width / 2)) }).toJPEG(40).toString('base64'); }
+  return b64;
+}
 async function shoot(display, b) {
   try {
-    const sf = display.scaleFactor, tw = Math.min(Math.round(display.bounds.width * sf), 1920), th = Math.round(tw * display.bounds.height / display.bounds.width);
+    const sf = display.scaleFactor, tw = Math.min(Math.round(display.bounds.width * sf), 1280), th = Math.round(tw * display.bounds.height / display.bounds.width);
     const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: tw, height: th } });
     const src = sources.find((s) => s.display_id === String(display.id)) || sources[0];
     if (!src) return null;
@@ -153,7 +159,7 @@ async function shoot(display, b) {
     for (let yy = 0; yy < height; yy += Math.max(1, height >> 4)) for (let xx = 0; xx < width; xx += Math.max(1, width >> 4)) {
       const o = (yy * width + xx) * 4; sum += 0.114 * bm[o] + 0.587 * bm[o + 1] + 0.299 * bm[o + 2]; n++;
     }
-    return { url: 'data:image/jpeg;base64,' + img.toJPEG(70).toString('base64'), dw: display.bounds.width, dh: display.bounds.height, dx: display.bounds.x, dy: display.bounds.y, wx: b.x, wy: b.y, dark: sum / n < 140 };
+    return { url: 'data:image/jpeg;base64,' + shotData(img), dw: display.bounds.width, dh: display.bounds.height, dx: display.bounds.x, dy: display.bounds.y, wx: b.x, wy: b.y, dark: sum / n < 140 };
   } catch (e) { return null; }
 }
 
@@ -728,7 +734,7 @@ async function smoke() {
   // przepływ z Usługi: zapisz incoming.txt tak jak skrypt i sprawdź, czy okno się otwiera z tekstem
   const f = path.join(app.getPath('userData'), 'incoming.txt');
   fs.writeFileSync(f, 'menu\ncom.apple.TextEdit\nHej, dzięki za szybką odpowiedź. Pogadajmy w czwartek o 10:30.');
-  await sleep(2500);
+  for (let i = 0; i < 40 && !(win && win.isVisible() && state.text.startsWith('Hej, dzięki')); i++) await sleep(250);
   add({ name: 'service-flow: okno widoczne', ok: !!(win && win.isVisible()), err: '' });
   add({ name: 'service-flow: tekst odebrany', ok: state.text.startsWith('Hej, dzięki'), err: 'text=' + state.text.slice(0, 40) });
   await sleep(1500);
