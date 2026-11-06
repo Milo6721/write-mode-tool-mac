@@ -1,9 +1,9 @@
 {
   "name": "write-mode-tool",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
-  "description": "Write Mode Tool dla macOS: zaznacz tekst, prawy przycisk (Usługi) lub skrót, wybierz akcję AI",
-  "author": "Write Mode Tool",
+  "description": "Write Tools dla macOS: zaznacz tekst, prawy przycisk (Usługi) lub skrót, wybierz akcję AI",
+  "author": "Write Tools",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -15,7 +15,7 @@
   },
   "build": {
     "appId": "pl.writemodetool.app",
-    "productName": "Write Mode Tool",
+    "productName": "Write Tools",
     "files": [
       "main.js",
       "preload.js",
@@ -37,13 +37,13 @@
       "icon": "assets/icon.png",
       "identity": null,
       "extendInfo": {
-        "NSAppleEventsUsageDescription": "Write Mode Tool potrzebuje Automatyzacji, aby wkleić wynik do aplikacji, otworzyć Kontakty i Wiadomości.",
-        "NSContactsUsageDescription": "Write Mode Tool pokazuje Twoje kontakty, żebyś mógł wysłać tekst do wybranej osoby."
+        "NSAppleEventsUsageDescription": "Write Tools potrzebuje Automatyzacji, aby wkleić wynik do aplikacji, otworzyć Kontakty i Wiadomości.",
+        "NSContactsUsageDescription": "Write Tools pokazuje Twoje kontakty, żebyś mógł wysłać tekst do wybranej osoby."
       }
     },
     "dmg": {
-      "title": "Write Mode Tool",
-      "artifactName": "Write-Mode-Tool-${arch}.dmg"
+      "title": "Write Tools",
+      "artifactName": "Write-Tools-${arch}.dmg"
     }
   }
 }

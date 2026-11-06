@@ -1,12 +1,20 @@
 'use strict';
-/* Write Mode Tool dla macOS: zaznacz tekst, kliknij prawym (Usługi) albo naciśnij skrót, wybierz akcję AI (tłumaczenie, wysyłka, komunikat commita, fiszki, własne akcje...). */
+/* Write Tools dla macOS: zaznacz tekst, kliknij prawym (Usługi) albo naciśnij skrót, wybierz akcję AI (tłumaczenie, wysyłka, komunikat commita, fiszki, własne akcje...). */
 const { app, BrowserWindow, Tray, Menu, globalShortcut, screen, clipboard, ipcMain, desktopCapturer, nativeImage, safeStorage, shell, Notification } = require('electron');
 const { execFile } = require('child_process');
 const os = require('os');
 const fs = require('fs');
 const path = require('path');
 
-app.setName('Write Mode Tool');
+app.setName('Write Tools');
+// migracja danych ze starej nazwy aplikacji (Write Mode Tool): ustawienia i zestawy fiszek; klucz API trzeba wkleić ponownie
+try {
+  const oldDir = path.join(app.getPath('appData'), 'Write Mode Tool'), newDir = app.getPath('userData');
+  if (oldDir !== newDir && fs.existsSync(oldDir) && !fs.existsSync(path.join(newDir, 'config.json'))) {
+    fs.mkdirSync(newDir, { recursive: true });
+    for (const f of ['config.json', 'study.json']) if (fs.existsSync(path.join(oldDir, f))) fs.copyFileSync(path.join(oldDir, f), path.join(newDir, f));
+  }
+} catch (e) { /* migracja jest opcjonalna */ }
 if (!app.requestSingleInstanceLock()) app.quit();
 
 // Okno 392x580, panel szkła ma margines M, soczewka wystaje poza panel o P (patrz renderer/style.css)
@@ -202,7 +210,7 @@ async function openPopup(mode, incoming) {
 
 /* ---------- AI ---------- */
 const SYSTEM =
-  "You are the writing assistant built into the user's operating system (Write Mode Tool). " +
+  "You are the writing assistant built into the user's operating system (Write Tools). " +
   "Reply in the same language as the user's text, unless the task says otherwise. " +
   'Output ONLY the resulting text: no preface, no explanations, no surrounding quotes, no code fences. ' +
   'Keep the original line breaks and paragraphs. Use plain text: no markdown symbols (#, **) unless the task needs a list. ' +
@@ -376,7 +384,7 @@ ipcMain.on('setLang', (e, l) => { cfg().lastLang = str(l, 40); saveCfg(); });
 
 /* Wyślij do: Wiadomości (iMessage/SMS) albo Mail. Domyślnie otwiera gotowy szkic i wysyłasz Enterem;
    z opcją "Wysyłaj wiadomości od razu" idzie bez podglądu (tylko Wiadomości). */
-const notify = (body) => { try { new Notification({ title: 'Write Mode Tool', body }).show(); } catch (e) { /* powiadomienie opcjonalne */ } };
+const notify = (body) => { try { new Notification({ title: 'Write Tools', body }).show(); } catch (e) { /* powiadomienie opcjonalne */ } };
 const messagesScript = (svc, phone, text) => 'tell application "Messages"\nset s to 1st account whose service type = ' + svc + '\nsend "' + aq(text) + '" to participant "' + aq(phone) + '" of s\nend tell';
 async function messagesSend(phone, text) {
   return (await osa(messagesScript('iMessage', phone, text))) !== null || (await osa(messagesScript('SMS', phone, text))) !== null;
@@ -410,17 +418,17 @@ ipcMain.handle('sendTo', async (e, { contactId, channel, text }) => {
 
 /* ---------- Usługi (prawy przycisk → Usługi): szybkie akcje w ~/Library/Services ---------- */
 const SERVICES = [
-  { key: 'menu', name: 'Write Mode Tool', view: 'menu' },
-  { key: 'lang', name: 'Write Mode Tool: Przetłumacz', view: 'lang' },
-  { key: 'chat', name: 'Write Mode Tool: Wyślij w Wiadomościach', view: 'chat' },
-  { key: 'mail', name: 'Write Mode Tool: Wyślij e-mailem', view: 'mail' },
+  { key: 'menu', name: 'Write Tools', view: 'menu' },
+  { key: 'lang', name: 'Write Tools: Przetłumacz', view: 'lang' },
+  { key: 'chat', name: 'Write Tools: Wyślij w Wiadomościach', view: 'chat' },
+  { key: 'mail', name: 'Write Tools: Wyślij e-mailem', view: 'mail' },
 ];
 const xml = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 function serviceScript(view) {
-  return 'd="$HOME/Library/Application Support/Write Mode Tool"; mkdir -p "$d"\n' +
+  return 'd="$HOME/Library/Application Support/Write Tools"; mkdir -p "$d"\n' +
     "f=$(osascript -e 'tell application \"System Events\" to get bundle identifier of first process whose frontmost is true')\n" +
     '{ echo "' + view + '"; echo "$f"; cat; } > "$d/in.tmp" && mv "$d/in.tmp" "$d/incoming.txt"\n' +
-    'open -g -a "Write Mode Tool"\n';
+    'open -g -a "Write Tools"\n';
 }
 const PL_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">';
 function serviceFiles(sv, n) {
@@ -442,6 +450,11 @@ function serviceFiles(sv, n) {
 }
 function installServices() {
   const dir = path.join(os.homedir(), 'Library', 'Services'); let changed = false;
+  // usuń usługi pod starą nazwą aplikacji
+  for (const old of ['Write Mode Tool', 'Write Mode Tool: Przetłumacz', 'Write Mode Tool: Wyślij w Wiadomościach', 'Write Mode Tool: Wyślij e-mailem']) {
+    const wf = path.join(dir, old + '.workflow');
+    if (fs.existsSync(wf)) { try { fs.rmSync(wf, { recursive: true, force: true }); changed = true; } catch (e) { /* ignorujemy */ } }
+  }
   SERVICES.forEach((sv, n) => {
     const wf = path.join(dir, sv.name + '.workflow'), base = path.join(wf, 'Contents');
     try {
@@ -475,7 +488,7 @@ function watchIncoming() {
 /* ---------- Zapisz w Notatkach (aplikacja Notatki; pierwsza linia staje się tytułem) ---------- */
 const htmlEsc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 function notesScript(text) {
-  const lines = String(text).replace(/\r/g, '').split('\n'), title = lines.find((l) => l.trim()) || 'Write Mode Tool';
+  const lines = String(text).replace(/\r/g, '').split('\n'), title = lines.find((l) => l.trim()) || 'Write Tools';
   const rest = lines.slice(lines.indexOf(title) + 1).map((l) => (l.trim() ? '<div>' + htmlEsc(l) + '</div>' : '<div><br></div>')).join('');
   const body = '<h1>' + htmlEsc(title.slice(0, 120)) + '</h1>' + rest;
   return 'tell application "Notes"\nset n to make new note with properties {body:"' + aq(body) + '"}\nactivate\nshow n\nend tell';
@@ -503,7 +516,7 @@ function parseItems(text) {
 const icsText = (t) => String(t).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,');
 function buildIcs(items) {
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
-  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Write Mode Tool//PL', 'CALSCALE:GREGORIAN'];
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Write Tools//PL', 'CALSCALE:GREGORIAN'];
   items.forEach((it, i) => {
     const d = it.date.replace(/-/g, ''), uid = Date.now() + '-' + i + '@writemodetool';
     if (!d) { L.push('BEGIN:VTODO', 'UID:' + uid, 'DTSTAMP:' + stamp, 'SUMMARY:' + icsText(it.title), 'END:VTODO'); return; }
@@ -521,7 +534,7 @@ ipcMain.handle('addCalendar', async (e, text) => {
   const dated = items.filter((x) => x.date), undated = items.filter((x) => !x.date);
   for (const it of undated) await osa('tell application "Reminders" to make new reminder with properties {name:"' + aq(it.title) + '"}');
   if (dated.length) {
-    const file = path.join(os.tmpdir(), 'WriteModeTool-' + Date.now() + '.ics');
+    const file = path.join(os.tmpdir(), 'WriteTools-' + Date.now() + '.ics');
     fs.writeFileSync(file, buildIcs(dated), 'utf8');
     const err = await shell.openPath(file);
     if (err) return { ok: false, msg: 'Nie udało się otworzyć Kalendarza.' };
@@ -578,12 +591,12 @@ const LOGIN = () => ({});
 function setTray(on) { if (on) buildTray(); else if (tray) { tray.destroy(); tray = null; } }
 function buildTray() {
   if (cfg().tray === false) return;
-  const icon = nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')).resize({ width: 18, height: 18 });
+  const icon = nativeImage.createFromPath(path.join(__dirname, 'assets', 'trayTemplate.png')); icon.setTemplateImage(true);
   if (!tray) tray = new Tray(icon);
   const login = app.getLoginItemSettings(LOGIN()).openAtLogin, hk = hotkeyLabel(cfg().hotkey);
-  tray.setToolTip('Write Mode Tool (' + hk + ')');
+  tray.setToolTip('Write Tools (' + hk + ')');
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Otwórz Write Mode Tool', click: () => showHome() },
+    { label: 'Otwórz Write Tools', click: () => showHome() },
     { label: 'Menu akcji (' + hk + ')', click: () => openPopup('select') },
     { label: 'Fiszki i quizy', click: () => showHome('study') },
     { label: 'Ustawienia…', click: () => showHome('settings') },
@@ -600,7 +613,7 @@ function buildTray() {
 let home = null;
 function createHome() {
   home = new BrowserWindow({
-    width: 1040, height: 700, minWidth: 780, minHeight: 540, show: false, title: 'Write Mode Tool',
+    width: 1040, height: 700, minWidth: 780, minHeight: 540, show: false, title: 'Write Tools',
     titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 20, y: 20 }, vibrancy: 'under-window', visualEffectState: 'active', backgroundColor: '#00000000',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });

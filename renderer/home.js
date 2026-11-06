@@ -1,5 +1,5 @@
 'use strict';
-/* Okno główne Write Mode Tool: Start, Fiszki i quizy, Statystyki, Personalizacja, Ustawienia */
+/* Okno główne Write Tools: Start, Fiszki i quizy, Statystyki, Personalizacja, Ustawienia */
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const demo = location.search.includes('demo');
@@ -41,7 +41,25 @@ function spark(hist, h) {
   return '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><defs><linearGradient id="sa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6a5cff" stop-opacity=".45"/><stop offset="1" stop-color="#6a5cff" stop-opacity="0"/></linearGradient><linearGradient id="sl" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff4fd8"/><stop offset=".5" stop-color="#6a5cff"/><stop offset="1" stop-color="#2fd5ff"/></linearGradient></defs>' +
     '<path d="' + area + '" fill="url(#sa)"/><path class="sline" pathLength="1" d="' + line + '" fill="none" stroke="url(#sl)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>';
 }
+function splitWords(h1) {
+  if (h1.dataset.split) return; h1.dataset.split = '1';
+  const words = h1.textContent.split(' '); h1.textContent = '';
+  words.forEach((w, i) => { const sp = document.createElement('span'); sp.className = 'w'; sp.style.setProperty('--w', i); sp.textContent = w; h1.append(sp, i < words.length - 1 ? ' ' : ''); });
+}
+function decorate(el) { $$('.ph h1', el).forEach(splitWords); $$('.card.stat, .deckcard, .step', el).forEach((c) => c.classList.add('tilt')); }
 const rise = (box) => $$('.rise', box).forEach((el, i) => el.style.setProperty('--i', i));
+/* karty przechylają się w stronę kursora */
+document.addEventListener('pointermove', (e) => {
+  const t = e.target.closest && e.target.closest('.tilt'); if (!t) return;
+  const r = t.getBoundingClientRect(); t.style.setProperty('--ry', (((e.clientX - r.left) / r.width - 0.5) * 9).toFixed(2) + 'deg'); t.style.setProperty('--rx', ((0.5 - (e.clientY - r.top) / r.height) * 7).toFixed(2) + 'deg');
+}, { passive: true });
+document.addEventListener('pointerout', (e) => { const t = e.target.closest && e.target.closest('.tilt'); if (t && !t.contains(e.relatedTarget)) { t.style.setProperty('--rx', '0deg'); t.style.setProperty('--ry', '0deg'); } });
+/* fala pod przyciskiem po kliknięciu */
+document.addEventListener('pointerdown', (e) => {
+  const b = e.target.closest && e.target.closest('.btn'); if (!b) return;
+  const r = b.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2, sp = document.createElement('span'); sp.className = 'rip';
+  sp.style.cssText = 'width:' + d + 'px;height:' + d + 'px;left:' + (e.clientX - r.left - d / 2) + 'px;top:' + (e.clientY - r.top - d / 2) + 'px'; b.append(sp); setTimeout(() => sp.remove(), 700);
+}, { passive: true });
 document.addEventListener('pointermove', (e) => {
   const t = e.target.closest && e.target.closest('.glass'); if (!t) return;
   const r = t.getBoundingClientRect(); t.style.setProperty('--mx', (e.clientX - r.left) + 'px'); t.style.setProperty('--my', (e.clientY - r.top) + 'px');
@@ -50,13 +68,13 @@ document.addEventListener('pointermove', (e) => {
 /* ---------- nawigacja ---------- */
 function movePill(p) {
   const b = $('#nav [data-p="' + p + '"]'); if (!b) return;
-  $('#pill').style.transform = 'translateY(' + b.offsetTop + 'px)'; $('#pill').style.height = b.offsetHeight + 'px';
+  const pill = $('#pill'); pill.style.transform = 'translateY(' + b.offsetTop + 'px)'; pill.style.height = b.offsetHeight + 'px'; pill.classList.remove('stretch'); void pill.offsetWidth; pill.classList.add('stretch');
   $$('#nav button').forEach((x) => x.classList.toggle('on', x === b));
 }
 async function swap(el, fn, dir) {
   el.style.setProperty('--dir', dir || 1);
   if (!el.hidden) { el.classList.remove('enter'); el.classList.add('leave'); await sleep(150); el.classList.remove('leave'); }
-  await fn(); rise(el); el.hidden = false; el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); el.scrollTop = 0; animateRings(el); countUps(el);
+  await fn(); rise(el); decorate(el); el.hidden = false; el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); el.scrollTop = 0; animateRings(el); countUps(el);
 }
 async function go(p) {
   if (p === cur && p === 'study' && pendingDeck && !busy) { const id = pendingDeck; pendingDeck = null; openDeck(id); return; }
@@ -177,6 +195,19 @@ function finishSession() {
   if (s.wrong.length) { const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Powtórz błędne (' + s.wrong.length + ')'; b.onclick = () => startSession(s.kind, s.wrong); act.append(b); }
   const d = document.createElement('button'); d.className = 'btn primary'; d.textContent = 'Gotowe'; d.onclick = endSession; act.append(d);
   animateRings($('#session')); countUps($('#session'));
+  if (pct >= 90 || (hist.length && pct > best)) setTimeout(confetti, 450);
+}
+function confetti() {
+  const host = $('#session'); if (!host || host.hidden) return; let cv = $('#confetti'); if (cv) cv.remove();
+  cv = document.createElement('canvas'); cv.id = 'confetti'; cv.width = host.clientWidth; cv.height = host.clientHeight; host.append(cv);
+  const g = cv.getContext('2d'), cols = ['#ff4fd8', '#6a5cff', '#2fd5ff', '#5df2c0', '#ffe45c', '#ff9a3c'], N = 120, P = [];
+  for (let i = 0; i < N; i++) P.push({ x: cv.width / 2, y: cv.height * 0.42, vx: (Math.random() - .5) * 15, vy: -Math.random() * 15 - 4, s: 5 + Math.random() * 7, r: Math.random() * 6, vr: (Math.random() - .5) * .4, c: cols[i % cols.length] });
+  const t0 = performance.now();
+  (function tick(t) {
+    const k = (t - t0) / 2600; if (k >= 1) { cv.remove(); return; } g.clearRect(0, 0, cv.width, cv.height);
+    for (const p of P) { p.vy += .35; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.r += p.vr; g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.globalAlpha = Math.max(0, 1 - k * k); g.fillStyle = p.c; g.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); g.restore(); }
+    requestAnimationFrame(tick);
+  })(t0);
 }
 document.addEventListener('keydown', (e) => {
   if (rec) return;
@@ -234,13 +265,13 @@ RENDER.settings = async (el) => {
     '<div class="sec rise">Skrót klawiszowy</div><div class="card glass group rise"><div class="srow"><div class="st"><b>Skrót główny</b><span>Otwiera menu akcji dla zaznaczonego tekstu w dowolnej aplikacji</span></div><div class="ctl"><div class="keys" id="keys">' + keycaps(s.hotkey) + '<span class="hint">Naciśnij nowy skrót…</span></div><button class="btn" id="recBtn">Zmień</button></div></div>' +
     '<div class="presets" id="presets">' + s.presets.map((p) => '<button class="chip" data-acc="' + esc(p.acc) + '">' + esc(p.label) + '</button>').join('') + '</div><div class="msg" id="hkMsg" style="padding-bottom:10px"></div></div>' +
     '<div class="sec rise">Usługi w menu prawego przycisku</div><div class="card glass group rise">' +
-    [['menu', 'Write Mode Tool', 'Pełne menu akcji'], ['lang', 'Przetłumacz', 'Od razu wybór języka'], ['chat', 'Wyślij w Wiadomościach', 'Wybór osoby z Kontaktów'], ['mail', 'Wyślij e-mailem', 'Szkic w aplikacji Mail']].map(([k, n, d]) => '<div class="srow"><div class="st"><b>' + n + '</b><span>' + d + '</span></div>' + sw('svc.' + k, sv[k]) + '</div>').join('') + '</div>' +
+    [['menu', 'Write Tools', 'Pełne menu akcji'], ['lang', 'Przetłumacz', 'Od razu wybór języka'], ['chat', 'Wyślij w Wiadomościach', 'Wybór osoby z Kontaktów'], ['mail', 'Wyślij e-mailem', 'Szkic w aplikacji Mail']].map(([k, n, d]) => '<div class="srow"><div class="st"><b>' + n + '</b><span>' + d + '</span></div>' + sw('svc.' + k, sv[k]) + '</div>').join('') + '</div>' +
     '<div class="sec rise">Zachowanie</div><div class="card glass group rise">' +
     [['login', 'Uruchamiaj po zalogowaniu', 'Aplikacja startuje razem z komputerem', s.login], ['showHome', 'Pokaż to okno po uruchomieniu', 'Inaczej aplikacja startuje cicho w tle', s.showHome], ['tray', 'Ikona w pasku menu', 'Szybki dostęp bez otwierania okna', s.tray], ['autoSend', 'Wysyłaj wiadomości od razu', 'Bez podglądu szkicu. Uwaga: AI może się pomylić', s.autoSend]].map(([k, n, d, v]) => '<div class="srow"><div class="st"><b>' + n + '</b><span>' + d + '</span></div>' + sw(k, v) + '</div>').join('') + '</div>' +
     '<div class="sec rise">Model AI</div><div class="card glass group rise"><div class="srow"><div class="st"><b>Jakość odpowiedzi</b><span>Szybki jest tańszy, dokładny lepiej pisze długie teksty</span></div><div class="seg" id="seg"><i style="transform:translateX(' + (fast ? 0 : 100) + '%)"></i><button data-m="" class="' + (fast ? 'on' : '') + '">Szybki</button><button data-m="claude-sonnet-5-5" class="' + (fast ? '' : 'on') + '">Dokładny</button></div></div></div>' +
     '<div class="sec rise">Klucz API Anthropic</div><div class="card glass group rise"><div class="srow" style="padding-bottom:12px"><div class="st"><b>Klucz</b><span>Zapisany zaszyfrowany na tym komputerze</span></div><span class="pill ' + (s.hasKey ? 'ok' : 'no') + '" id="keyPill">' + (s.hasKey ? 'Zapisany' : 'Brak klucza') + '</span></div>' +
     '<div class="keyin"><input id="keyIn" type="password" placeholder="sk-ant-…" spellcheck="false" autocomplete="off"><button class="btn primary" id="keySave">Zapisz</button><button class="btn" id="keyGet">Zdobądź klucz</button></div><div class="msg" id="keyMsg" style="padding-bottom:12px"></div></div>' +
-    '<p class="note rise" style="margin-top:18px">Write Mode Tool ' + esc(s.version) + ' · projekt niezależny, nie jest produktem Apple Inc. ani Anthropic PBC.</p>';
+    '<p class="note rise" style="margin-top:18px">Write Tools ' + esc(s.version) + ' · projekt niezależny, nie jest produktem Apple Inc. ani Anthropic PBC.</p>';
   $$('.sw', el).forEach((b) => { b.onclick = async () => { const on = b.getAttribute('aria-checked') !== 'true'; b.setAttribute('aria-checked', on); await bridge.settingsSet(b.dataset.k, on); }; });
   $$('#seg button', el).forEach((b, i) => { b.onclick = async () => { $$('#seg button', el).forEach((x) => x.classList.toggle('on', x === b)); $('#seg i', el).style.transform = 'translateX(' + i * 100 + '%)'; await bridge.settingsSet('model', b.dataset.m); }; });
   const setKeys = (acc, label) => { $('#keys', el).innerHTML = keycaps(acc) + '<span class="hint">Naciśnij nowy skrót…</span>'; setHk(label); $('#hkMsg', el).textContent = ''; };
